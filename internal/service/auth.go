@@ -30,7 +30,6 @@ func NewAuthService(userRepo repository.UserRepository, jwtSecret string) AuthSe
 }
 
 func (s *authService) Register(req *dto.RegisterRequest) error {
-	// Перевіряємо чи не існує користувач з таким email
 	_, err := s.userRepo.GetByEmail(req.Email)
 	if err == nil {
 		return errors.New("user with this email already exists")
@@ -39,13 +38,11 @@ func (s *authService) Register(req *dto.RegisterRequest) error {
 		return err
 	}
 
-	// Хешуємо пароль
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 
-	// Створюємо користувача
 	user := &models.User{
 		Email:     req.Email,
 		Password:  string(hashedPassword),
@@ -58,7 +55,6 @@ func (s *authService) Register(req *dto.RegisterRequest) error {
 }
 
 func (s *authService) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
-	// Знаходимо користувача
 	user, err := s.userRepo.GetByEmail(req.Email)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -67,12 +63,10 @@ func (s *authService) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 		return nil, err
 	}
 
-	// Перевіряємо пароль
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
 		return nil, errors.New("invalid credentials")
 	}
 
-	// Генеруємо JWT токен
 	token, err := s.generateJWT(user)
 	if err != nil {
 		return nil, err
@@ -92,11 +86,11 @@ func (s *authService) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 
 func (s *authService) generateJWT(user *models.User) (string, error) {
 	claims := jwt.MapClaims{
-		"user_id":    user.ID,
-		"email":      user.Email,
-		"role":       user.Role,
-		"exp":        time.Now().Add(time.Hour * 24).Unix(),
-		"iat":        time.Now().Unix(),
+		"user_id": user.ID,
+		"email":   user.Email,
+		"role":    user.Role,
+		"exp":     time.Now().Add(time.Hour * 24).Unix(),
+		"iat":     time.Now().Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

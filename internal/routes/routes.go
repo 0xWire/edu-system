@@ -20,7 +20,6 @@ func NewRouter(authHandler *handlers.AuthHandler, jwtSecret string) *Router {
 }
 
 func (r *Router) SetupRoutes(engine *gin.Engine) {
-	// Health check endpoint
 	engine.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
@@ -33,7 +32,7 @@ func (r *Router) SetupRoutes(engine *gin.Engine) {
 		{
 			auth.POST("/register", r.authHandler.Register)
 			auth.POST("/login", r.authHandler.Login)
-			
+
 			// Protected routes
 			protected := auth.Group("")
 			protected.Use(middleware.JWTAuth(r.jwtSecret))

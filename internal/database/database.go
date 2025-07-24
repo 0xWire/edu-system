@@ -17,7 +17,6 @@ func InitDB(dbPath string) *gorm.DB {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	// Auto migrate schemas
 	if err := db.AutoMigrate(&models.User{}); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}

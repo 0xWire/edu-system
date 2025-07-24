@@ -20,7 +20,6 @@ func JWTAuth(jwtSecret string) gin.HandlerFunc {
 			return
 		}
 
-		// Перевіряємо формат Bearer token
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) != 2 || parts[0] != "Bearer" {
 			c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
@@ -32,7 +31,6 @@ func JWTAuth(jwtSecret string) gin.HandlerFunc {
 
 		tokenString := parts[1]
 
-		// Парсимо та перевіряємо токен
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, jwt.ErrSignatureInvalid
@@ -56,7 +54,6 @@ func JWTAuth(jwtSecret string) gin.HandlerFunc {
 			return
 		}
 
-		// Додаємо claims до контексту
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
 			c.Set("user_id", claims["user_id"])
 			c.Set("email", claims["email"])

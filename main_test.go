@@ -19,7 +19,6 @@ import (
 )
 
 func setupTestApp() *gin.Engine {
-	// Використовуємо тестову базу даних
 	os.Setenv("DB_PATH", ":memory:")
 	os.Setenv("JWT_SECRET", "test-secret")
 
@@ -53,7 +52,6 @@ func TestHealthCheck(t *testing.T) {
 func TestUserRegistration(t *testing.T) {
 	app := setupTestApp()
 
-	// Тестуємо успішну реєстрацію
 	registerData := map[string]string{
 		"email":      "test@example.com",
 		"password":   "123456",

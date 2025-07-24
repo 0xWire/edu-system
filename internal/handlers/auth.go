@@ -44,7 +44,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		if err.Error() == "user with this email already exists" {
 			statusCode = http.StatusConflict
 		}
-		
+
 		c.JSON(statusCode, dto.ErrorResponse{
 			Error:   "registration failed",
 			Message: err.Error(),
@@ -84,7 +84,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		if err.Error() == "invalid credentials" {
 			statusCode = http.StatusUnauthorized
 		}
-		
+
 		c.JSON(statusCode, dto.ErrorResponse{
 			Error:   "login failed",
 			Message: err.Error(),
@@ -109,7 +109,6 @@ func (h *AuthHandler) Profile(c *gin.Context) {
 	email, _ := c.Get("email")
 	role, _ := c.Get("role")
 
-	// В реальному проекті краще отримувати повну інформацію з бази даних
 	user := dto.UserResponse{
 		ID:    uint(userID.(float64)),
 		Email: email.(string),
