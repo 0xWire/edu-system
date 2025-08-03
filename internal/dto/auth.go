@@ -24,13 +24,3 @@ type UserResponse struct {
 	LastName  string `json:"last_name"`
 	Role      string `json:"role"`
 }
-
-type ErrorResponse struct {
-	Error   string `json:"error"`
-	Message string `json:"message,omitempty"`
-}
-
-type SuccessResponse struct {
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
-}
