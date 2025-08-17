@@ -50,16 +50,32 @@ export default function ProtectedRoute({
     );
   }
 
+  // If authentication is required but user is not authenticated
   if (requireAuth && !isAuthenticated) {
-    return null;
+    return null; // Will redirect in useEffect
   }
 
+  // If authentication is not required but user is authenticated
   if (!requireAuth && isAuthenticated) {
-    return null;
+    return null; // Will redirect in useEffect
   }
 
+  // If specific roles are required but user doesn't have them
   if (requireAuth && isAuthenticated && allowedRoles && user && !allowedRoles.includes(user.role)) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600 mb-4">You don't have permission to access this page.</p>
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md"
+          >
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return <>{children}</>;

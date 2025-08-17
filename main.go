@@ -16,11 +16,17 @@ func main() {
 	cfg := config.Load()
 	db := database.InitDB(cfg.DBPath)
 
+	// Initialize repositories
 	userRepo := repository.NewUserRepository(db)
+	testRepo := repository.NewTestRepository(db)
 
+	// Initialize services
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
+	testService := service.NewTestService(testRepo)
 
+	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
+	testHandler := handlers.NewTestHandler(testService)
 
 	gin.SetMode(cfg.GinMode)
 	engine := gin.Default()
@@ -38,7 +44,7 @@ func main() {
 		c.Next()
 	})
 
-	router := routes.NewRouter(authHandler, cfg.JWTSecret)
+	router := routes.NewRouter(authHandler, testHandler, cfg.JWTSecret)
 	router.SetupRoutes(engine)
 
 	log.Printf("Server starting on port %s", cfg.Port)

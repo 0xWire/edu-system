@@ -114,20 +114,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshProfile = async () => {
-    if (AuthService.isAuthenticated()) {
-      try {
-        const response = await AuthService.getProfile();
-        if (response.success && response.user) {
-          setUser(response.user);
-          localStorage.setItem('user', JSON.stringify(response.user));
-        }
-      } catch (error) {
-        console.error('Failed to refresh profile:', error);
+    if (!AuthService.isAuthenticated()) return;
+
+    try {
+      const response = await AuthService.getProfile();
+      if (response.success && response.user) {
+        setUser(response.user);
+        localStorage.setItem('user', JSON.stringify(response.user));
       }
+    } catch (error) {
+      console.error('Failed to refresh profile:', error);
     }
   };
 
-  const value: AuthContextType = {
+  const value = {
     user,
     isLoading,
     isAuthenticated,

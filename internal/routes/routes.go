@@ -9,12 +9,14 @@ import (
 
 type Router struct {
 	authHandler *handlers.AuthHandler
+	testHandler *handlers.TestHandler
 	jwtSecret   string
 }
 
-func NewRouter(authHandler *handlers.AuthHandler, jwtSecret string) *Router {
+func NewRouter(authHandler *handlers.AuthHandler, testHandler *handlers.TestHandler, jwtSecret string) *Router {
 	return &Router{
 		authHandler: authHandler,
+		testHandler: testHandler,
 		jwtSecret:   jwtSecret,
 	}
 }
@@ -45,6 +47,16 @@ func (r *Router) SetupRoutes(engine *gin.Engine) {
 		protected := v1.Group("")
 		protected.Use(middleware.JWTAuth(r.jwtSecret))
 		{
+			// Test routes
+			tests := protected.Group("/tests")
+			{
+				tests.POST("/", r.testHandler.CreateTest)
+				tests.GET("/", r.testHandler.GetAllTests)
+				tests.GET("/:id", r.testHandler.GetTest)
+				tests.PUT("/:id", r.testHandler.UpdateTest)
+				tests.DELETE("/:id", r.testHandler.DeleteTest)
+			}
+
 			// User routes
 			users := protected.Group("/users")
 			{

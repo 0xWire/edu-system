@@ -8,11 +8,11 @@ type CreateTestRequest struct {
 }
 
 type GetTestResponse struct {
-	Author      string     `json:"author"`
-	TestID      string     `json:"test_id" binding:"required"`
-	Title       string     `json:"title" binding:"required"`
-	Description string     `json:"description" binding:"required"`
-	Questions   []Question `json:"questions" binding:"required,min=1"`
+	Author      string             `json:"author"`
+	TestID      string             `json:"test_id"`
+	Title       string             `json:"title"`
+	Description string             `json:"description"`
+	Questions   []QuestionResponse `json:"questions"`
 }
 
 type UpdateTestRequest struct {
@@ -27,16 +27,30 @@ type DeleteTestRequest struct {
 }
 
 type Question struct {
-	ID            string   `json:"id" gorm:"primarykey"`
-	Author        string   `json:"author,omitempty" binding:"required" :"author"`
-	QuestionText  string   `json:"question_text" binding:"required" :"question_text"`
-	Options       []Answer `json:"options" binding:"required,min=2" :"options"`
-	CorrectOption int      `json:"correct_option" binding:"required,min=0" :"correct_option"`
-	ImageURL      string   `json:"image_url,omitempty" :"image_url"`
+	ID            string   `json:"id"`
+	Author        string   `json:"author,omitempty"`
+	QuestionText  string   `json:"question_text" binding:"required"`
+	Options       []Answer `json:"options" binding:"required,min=2"`
+	CorrectOption int      `json:"correct_option" binding:"required,min=0"`
+	ImageURL      string   `json:"image_url,omitempty"`
+}
+
+type QuestionResponse struct {
+	ID            string           `json:"id"`
+	QuestionText  string           `json:"question_text"`
+	Options       []OptionResponse `json:"options"`
+	CorrectOption int              `json:"correct_option"`
+	ImageURL      string           `json:"image_url,omitempty"`
 }
 
 type Answer struct {
 	AnswerNumber int    `json:"answer" binding:"required"`
 	AnswerText   string `json:"answer_text" binding:"required"`
 	ImageURL     string `json:"image_url,omitempty"`
+}
+
+type OptionResponse struct {
+	ID         string `json:"id"`
+	OptionText string `json:"option_text"`
+	ImageURL   string `json:"image_url,omitempty"`
 }
