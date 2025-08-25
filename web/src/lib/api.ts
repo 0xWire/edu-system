@@ -1,24 +1,26 @@
 import axios from 'axios';
-import Cookies from 'js-cookie';
 
-// Create axios instance with base configuration
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+// Create axios instance
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080',
+  baseURL: API_BASE_URL,
   timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = Cookies.get('auth-token');
+    const token = localStorage.getItem('auth-token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Response interceptor for error handling
@@ -26,8 +28,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Clear auth data on unauthorized
-      Cookies.remove('auth-token');
+      localStorage.removeItem('auth-token');
       localStorage.removeItem('user');
       window.location.href = '/login';
     }

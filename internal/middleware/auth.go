@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"edu-system/internal/dto"
+	"log"
 	"net/http"
 	"strings"
 
@@ -11,8 +12,20 @@ import (
 
 func JWTAuth(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		log.Printf("JWT Auth middleware: %s %s", c.Request.Method, c.Request.URL.Path)
+
+		// Handle preflight OPTIONS request
+		if c.Request.Method == "OPTIONS" {
+			log.Println("JWT Auth: Skipping OPTIONS request")
+			c.Next()
+			return
+		}
+
 		authHeader := c.GetHeader("Authorization")
+		log.Printf("JWT Auth: Authorization header = '%s'", authHeader)
+
 		if authHeader == "" {
+			log.Println("JWT Auth: No authorization header provided")
 			c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
 				Error: "authorization header required",
 			})
@@ -22,6 +35,7 @@ func JWTAuth(jwtSecret string) gin.HandlerFunc {
 
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) != 2 || parts[0] != "Bearer" {
+			log.Printf("JWT Auth: Invalid authorization header format: %v", parts)
 			c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
 				Error: "invalid authorization header format",
 			})
@@ -30,6 +44,7 @@ func JWTAuth(jwtSecret string) gin.HandlerFunc {
 		}
 
 		tokenString := parts[1]
+		log.Printf("JWT Auth: Token = %s...", tokenString[:min(len(tokenString), 20)])
 
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -39,6 +54,7 @@ func JWTAuth(jwtSecret string) gin.HandlerFunc {
 		})
 
 		if err != nil {
+			log.Printf("JWT Auth: Token parse error: %v", err)
 			c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
 				Error: "invalid token",
 			})
@@ -47,26 +63,67 @@ func JWTAuth(jwtSecret string) gin.HandlerFunc {
 		}
 
 		if !token.Valid {
+			log.Println("JWT Auth: Token is not valid")
 			c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
-				Error: "token is not valid",
+				Error: "invalid token",
 			})
 			c.Abort()
 			return
 		}
 
-		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-			c.Set("user_id", claims["user_id"])
-			c.Set("email", claims["email"])
-			c.Set("role", claims["role"])
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			log.Println("JWT Auth: Cannot parse token claims")
+			c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
+				Error: "invalid token claims",
+			})
+			c.Abort()
+			return
 		}
+
+		userID, ok := claims["user_id"]
+		if !ok {
+			log.Println("JWT Auth: No user_id in token claims")
+			c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
+				Error: "invalid token claims",
+			})
+			c.Abort()
+			return
+		}
+
+		email, ok := claims["email"]
+		if !ok {
+			log.Println("JWT Auth: No email in token claims")
+			c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
+				Error: "invalid token claims",
+			})
+			c.Abort()
+			return
+		}
+
+		role, ok := claims["role"]
+		if !ok {
+			log.Println("JWT Auth: No role in token claims")
+			c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
+				Error: "invalid token claims",
+			})
+			c.Abort()
+			return
+		}
+
+		log.Printf("JWT Auth: Successfully authenticated user ID: %v, email: %v, role: %v", userID, email, role)
+
+		c.Set("user_id", userID)
+		c.Set("email", email)
+		c.Set("role", role)
 
 		c.Next()
 	}
 }
 
-func RequireRole(role string) gin.HandlerFunc {
+func RequireRole(requiredRole string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userRole, exists := c.Get("role")
+		role, exists := c.Get("role")
 		if !exists {
 			c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
 				Error: "user role not found",
@@ -75,7 +132,7 @@ func RequireRole(role string) gin.HandlerFunc {
 			return
 		}
 
-		if userRole.(string) != role {
+		if role.(string) != requiredRole {
 			c.JSON(http.StatusForbidden, dto.ErrorResponse{
 				Error: "insufficient permissions",
 			})
@@ -85,4 +142,11 @@ func RequireRole(role string) gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

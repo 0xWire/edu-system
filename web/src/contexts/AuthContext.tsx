@@ -11,7 +11,6 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (userData: { email: string; password: string; firstName: string; lastName: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
-  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,25 +23,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Initialize auth state
   useEffect(() => {
-    const initAuth = async () => {
+    const initAuth = () => {
       if (AuthService.isAuthenticated()) {
-        try {
-          const savedUser = AuthService.getCurrentUser();
-          if (savedUser) {
-            setUser(savedUser);
-          } else {
-            // Fetch fresh profile data
-            const profileResponse = await AuthService.getProfile();
-            if (profileResponse.success && profileResponse.user) {
-              setUser(profileResponse.user);
-              localStorage.setItem('user', JSON.stringify(profileResponse.user));
-            } else {
-              AuthService.logout();
-            }
-          }
-        } catch (error) {
-          console.error('Auth initialization error:', error);
-          AuthService.logout();
+        const savedUser = AuthService.getCurrentUser();
+        if (savedUser) {
+          setUser(savedUser);
         }
       }
       setIsLoading(false);
@@ -113,28 +98,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     AuthService.logout();
   };
 
-  const refreshProfile = async () => {
-    if (!AuthService.isAuthenticated()) return;
-
-    try {
-      const response = await AuthService.getProfile();
-      if (response.success && response.user) {
-        setUser(response.user);
-        localStorage.setItem('user', JSON.stringify(response.user));
-      }
-    } catch (error) {
-      console.error('Failed to refresh profile:', error);
-    }
-  };
-
   const value = {
     user,
     isLoading,
     isAuthenticated,
     login,
     register,
-    logout,
-    refreshProfile
+    logout
   };
 
   return (

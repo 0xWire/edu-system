@@ -1,98 +1,56 @@
 import api from '@/lib/api';
-import {
-  CreateTestRequest,
-  GetTestResponse,
-  UpdateTestRequest,
-  DeleteTestRequest,
-  TestListResponse
-} from '@/types/test';
-import { ErrorResponse, SuccessResponse } from '@/types/auth';
+import { GetTestResponse, CreateTestRequest } from '@/types/test';
 
 export class TestService {
-  // Create a new test
-  static async createTest(testData: CreateTestRequest): Promise<{ success: boolean; error?: string }> {
+  // Get all tests
+  static async getAllTests(): Promise<GetTestResponse[]> {
     try {
-      const response = await api.post<SuccessResponse>('/api/v1/tests', testData);
-      return { success: true };
-    } catch (error: any) {
-      const errorData = error.response?.data as ErrorResponse;
-      return {
-        success: false,
-        error: errorData?.error || errorData?.message || 'Failed to create test'
-      };
+      const response = await api.get('/api/v1/tests');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch tests:', error);
+      throw error;
     }
   }
 
   // Get a specific test by ID
-  static async getTest(testId: string): Promise<{ success: boolean; data?: GetTestResponse; error?: string }> {
+  static async getTest(id: string): Promise<GetTestResponse> {
     try {
-      const response = await api.get<GetTestResponse>(`/api/v1/tests/${testId}`);
-      return { success: true, data: response.data };
-    } catch (error: any) {
-      const errorData = error.response?.data as ErrorResponse;
-      return {
-        success: false,
-        error: errorData?.error || errorData?.message || 'Failed to fetch test'
-      };
+      const response = await api.get(`/api/v1/tests/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch test:', error);
+      throw error;
     }
   }
 
-  // Get all tests
-  static async getAllTests(): Promise<{ success: boolean; data?: GetTestResponse[]; error?: string }> {
+  // Create a new test
+  static async createTest(testData: CreateTestRequest): Promise<void> {
     try {
-      const response = await api.get<GetTestResponse[]>('/api/v1/tests');
-      return { success: true, data: response.data };
-    } catch (error: any) {
-      const errorData = error.response?.data as ErrorResponse;
-      return {
-        success: false,
-        error: errorData?.error || errorData?.message || 'Failed to fetch tests'
-      };
+      await api.post('/api/v1/tests', testData);
+    } catch (error) {
+      console.error('Failed to create test:', error);
+      throw error;
     }
   }
 
   // Update a test
-  static async updateTest(testId: string, testData: Partial<UpdateTestRequest>): Promise<{ success: boolean; error?: string }> {
+  static async updateTest(id: string, testData: Partial<CreateTestRequest>): Promise<void> {
     try {
-      const updateData = { test_id: testId, ...testData };
-      const response = await api.put<SuccessResponse>(`/api/v1/tests/${testId}`, updateData);
-      return { success: true };
-    } catch (error: any) {
-      const errorData = error.response?.data as ErrorResponse;
-      return {
-        success: false,
-        error: errorData?.error || errorData?.message || 'Failed to update test'
-      };
+      await api.put(`/api/v1/tests/${id}`, testData);
+    } catch (error) {
+      console.error('Failed to update test:', error);
+      throw error;
     }
   }
 
   // Delete a test
-  static async deleteTest(testId: string): Promise<{ success: boolean; error?: string }> {
+  static async deleteTest(id: string): Promise<void> {
     try {
-      const response = await api.delete<SuccessResponse>(`/api/v1/tests/${testId}`);
-      return { success: true };
-    } catch (error: any) {
-      const errorData = error.response?.data as ErrorResponse;
-      return {
-        success: false,
-        error: errorData?.error || errorData?.message || 'Failed to delete test'
-      };
-    }
-  }
-
-  // Get tests by current user (will be filtered by backend based on JWT)
-  static async getMyTests(): Promise<{ success: boolean; data?: GetTestResponse[]; error?: string }> {
-    try {
-      // Since we don't have a specific "my tests" endpoint yet, we'll use the same endpoint
-      // and filter on the frontend by author name for now
-      const response = await api.get<GetTestResponse[]>('/api/v1/tests');
-      return { success: true, data: response.data };
-    } catch (error: any) {
-      const errorData = error.response?.data as ErrorResponse;
-      return {
-        success: false,
-        error: errorData?.error || errorData?.message || 'Failed to fetch your tests'
-      };
+      await api.delete(`/api/v1/tests/${id}`);
+    } catch (error) {
+      console.error('Failed to delete test:', error);
+      throw error;
     }
   }
 }

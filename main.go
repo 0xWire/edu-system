@@ -4,9 +4,11 @@ import (
 	"edu-system/internal/config"
 	"edu-system/internal/database"
 	"edu-system/internal/handlers"
+	"edu-system/internal/middleware"
 	"edu-system/internal/repository"
 	"edu-system/internal/routes"
 	"edu-system/internal/service"
+	"fmt"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -31,18 +33,20 @@ func main() {
 	gin.SetMode(cfg.GinMode)
 	engine := gin.Default()
 
-	engine.Use(func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization")
+	// Add request logging middleware
+	engine.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
+		return fmt.Sprintf("[%s] %s %s %d %s %s\n",
+			param.TimeStamp.Format("2006/01/02 - 15:04:05"),
+			param.Method,
+			param.Path,
+			param.StatusCode,
+			param.Latency,
+			param.ClientIP,
+		)
+	}))
 
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-
-		c.Next()
-	})
+	// Add CORS middleware first, before any routes
+	engine.Use(middleware.CORS())
 
 	router := routes.NewRouter(authHandler, testHandler, cfg.JWTSecret)
 	router.SetupRoutes(engine)

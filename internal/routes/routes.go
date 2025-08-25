@@ -3,6 +3,7 @@ package routes
 import (
 	"edu-system/internal/handlers"
 	"edu-system/internal/middleware"
+	"log"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,13 +23,42 @@ func NewRouter(authHandler *handlers.AuthHandler, testHandler *handlers.TestHand
 }
 
 func (r *Router) SetupRoutes(engine *gin.Engine) {
+	// Disable trailing slash redirects
+	engine.RedirectTrailingSlash = false
+
 	engine.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok"})
+		log.Println("Health check endpoint called")
+		c.JSON(200, gin.H{"status": "ok", "message": "Server is running"})
+	})
+
+	// Debug endpoint
+	engine.GET("/debug", func(c *gin.Context) {
+		log.Println("Debug endpoint called")
+		c.JSON(200, gin.H{
+			"message": "Debug endpoint working",
+			"headers": c.Request.Header,
+			"method":  c.Request.Method,
+			"path":    c.Request.URL.Path,
+		})
 	})
 
 	// API v1 group
 	v1 := engine.Group("/api/v1")
 	{
+		// Public endpoints (no auth required)
+		v1.GET("/tests/public", func(c *gin.Context) {
+			log.Println("Public tests endpoint called")
+			c.JSON(200, gin.H{
+				"message": "Public tests endpoint working",
+				"method":  c.Request.Method,
+				"path":    c.Request.URL.Path,
+			})
+		})
+
+		// Public test routes (for testing/debugging)
+		v1.GET("/tests", r.testHandler.GetAllTests)
+		v1.GET("/tests/:id", r.testHandler.GetTest)
+
 		// Auth routes
 		auth := v1.Group("/auth")
 		{
@@ -47,34 +77,12 @@ func (r *Router) SetupRoutes(engine *gin.Engine) {
 		protected := v1.Group("")
 		protected.Use(middleware.JWTAuth(r.jwtSecret))
 		{
-			// Test routes
+			// Test management routes (create, update, delete require auth)
 			tests := protected.Group("/tests")
 			{
 				tests.POST("/", r.testHandler.CreateTest)
-				tests.GET("/", r.testHandler.GetAllTests)
-				tests.GET("/:id", r.testHandler.GetTest)
 				tests.PUT("/:id", r.testHandler.UpdateTest)
 				tests.DELETE("/:id", r.testHandler.DeleteTest)
-			}
-
-			// User routes
-			users := protected.Group("/users")
-			{
-				users.GET("/", func(c *gin.Context) {
-					c.JSON(200, gin.H{"message": "get all users"})
-				})
-				users.GET("/:id", func(c *gin.Context) {
-					c.JSON(200, gin.H{"message": "get user by id"})
-				})
-			}
-
-			// Admin only routes
-			admin := protected.Group("/admin")
-			admin.Use(middleware.RequireRole("admin"))
-			{
-				admin.GET("/dashboard", func(c *gin.Context) {
-					c.JSON(200, gin.H{"message": "admin dashboard"})
-				})
 			}
 		}
 	}
