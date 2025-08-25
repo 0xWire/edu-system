@@ -5,6 +5,7 @@ export interface User {
   first_name: string;
   last_name: string;
   role: string;
+  created_at: string;
 }
 
 // Auth request types
@@ -26,26 +27,8 @@ export interface LoginResponse {
   user: User;
 }
 
-export interface ErrorResponse {
-  error: string;
-  message?: string;
-}
-
-export interface SuccessResponse {
-  message: string;
-  data?: any;
-}
-
-// Form validation schemas
-export interface LoginFormData {
-  email: string;
-  password: string;
-}
-
-export interface RegisterFormData {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  confirmPassword: string;
+export interface AuthResponse {
+  success: boolean;
+  data?: LoginResponse;
+  error?: string;
 }

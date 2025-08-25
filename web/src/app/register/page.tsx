@@ -1,5 +1,5 @@
-import RegisterForm from '@/components/RegisterForm';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import RegisterForm from '@/components/RegisterForm';
 
 export default function RegisterPage() {
   return (

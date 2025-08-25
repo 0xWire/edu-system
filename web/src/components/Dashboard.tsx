@@ -2,57 +2,45 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import CreateTestForm from './CreateTestForm';
-import TestList from './TestList';
-import TestView from './TestView';
+import { TestService } from '@/services/test';
 import { GetTestResponse } from '@/types/test';
 
-type ActiveTab = 'all-tests' | 'my-tests' | 'create-test' | 'view-test' | 'take-test';
-
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('all-tests');
-  const [selectedTest, setSelectedTest] = useState<GetTestResponse | null>(null);
+  const [tests, setTests] = useState<GetTestResponse[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const { user, logout } = useAuth();
 
-  const handleViewTest = (test: GetTestResponse) => {
-    setSelectedTest(test);
-    setActiveTab('view-test');
+  useEffect(() => {
+    fetchTests();
+  }, []);
+
+  const fetchTests = async () => {
+    try {
+      setLoading(true);
+      const data = await TestService.getAllTests();
+      setTests(data);
+      setError('');
+    } catch (error: any) {
+      console.error('Failed to fetch tests:', error);
+      setError('Failed to load tests');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleTakeTest = (test: GetTestResponse) => {
-    setSelectedTest(test);
-    setActiveTab('take-test');
+  const handleLogout = () => {
+    logout();
+    window.location.href = '/login';
   };
 
-  const handleEditTest = (test: GetTestResponse) => {
-    setSelectedTest(test);
-    // For now, redirect to create form (can be enhanced with edit mode)
-    setActiveTab('create-test');
-  };
-
-  const handleTestCreated = () => {
-    setActiveTab('my-tests');
-  };
-
-  const handleBackToTests = () => {
-    setSelectedTest(null);
-    setActiveTab('all-tests');
-  };
-
-  if (error) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Error</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md"
-          >
-            Retry
-          </button>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -77,7 +65,7 @@ export default function Dashboard() {
                 {user?.role}
               </span>
               <button
-                onClick={logout}
+                onClick={handleLogout}
                 className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md text-sm"
               >
                 Logout
@@ -89,118 +77,90 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        {/* Tab Navigation */}
-        {(activeTab === 'view-test' || activeTab === 'take-test') ? (
-          // Show test view without tabs
-          <div>
-            {activeTab === 'view-test' && selectedTest && (
-              <TestView
-                testId={selectedTest.test_id}
-                mode="view"
-                onBack={handleBackToTests}
-              />
-            )}
-            {activeTab === 'take-test' && selectedTest && (
-              <TestView
-                testId={selectedTest.test_id}
-                mode="take"
-                onBack={handleBackToTests}
-              />
-            )}
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
+          <p className="text-gray-600">Manage your tests and view available tests</p>
+        </div>
+
+        {/* Test connection status */}
+        <div className="bg-white shadow rounded-lg p-6 mb-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">API Connection Status</h3>
+          {error ? (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              <p className="font-medium">Connection Error</p>
+              <p>{error}</p>
+              <button
+                onClick={fetchTests}
+                className="mt-2 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm"
+              >
+                Retry Connection
+              </button>
+            </div>
+          ) : (
+            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+              <p className="font-medium">✓ Connected to API</p>
+              <p>Successfully loaded {tests.length} tests</p>
+            </div>
+          )}
+        </div>
+
+        {/* Tests Section */}
+        <div className="bg-white shadow rounded-lg p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-medium text-gray-900">Available Tests</h3>
+            <button
+              onClick={fetchTests}
+              disabled={loading}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm disabled:opacity-50"
+            >
+              {loading ? 'Loading...' : 'Refresh'}
+            </button>
           </div>
-        ) : (
-          <>
-            <div className="border-b border-gray-200 mb-6">
-              <nav className="-mb-px flex space-x-8">
-                <button
-                  onClick={() => setActiveTab('all-tests')}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === 'all-tests'
-                      ? 'border-indigo-500 text-indigo-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  All Tests
-                </button>
-                <button
-                  onClick={() => setActiveTab('my-tests')}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === 'my-tests'
-                      ? 'border-indigo-500 text-indigo-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  My Tests
-                </button>
-                <button
-                  onClick={() => setActiveTab('create-test')}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === 'create-test'
-                      ? 'border-indigo-500 text-indigo-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  Create Test
-                </button>
-              </nav>
-            </div>
 
-            {/* Tab Content */}
-            <div>
-              {activeTab === 'all-tests' && (
-                <div>
-                  <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900">All Tests</h2>
-                    <p className="text-gray-600">Browse and take tests from all users</p>
+          {tests.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500">No tests available</p>
+              <button
+                className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm"
+                onClick={() => alert('Create test functionality will be added soon')}
+              >
+                Create First Test
+              </button>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {tests.map((test) => (
+                <div key={test.test_id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <h4 className="font-medium text-gray-900">{test.title}</h4>
+                  <p className="text-sm text-gray-600 mt-1">{test.description}</p>
+                  <div className="mt-2 text-xs text-gray-500">
+                    <p>Author: {test.author}</p>
+                    <p>Questions: {test.questions?.length || 0}</p>
                   </div>
-                  <TestList
-                    onView={handleViewTest}
-                    onEdit={handleEditTest}
-                    showActions={true}
-                    myTestsOnly={false}
-                  />
-                  <div className="mt-6 text-center">
-                    <button
-                      onClick={() => setActiveTab('take-test')}
-                      className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md font-medium"
-                    >
-                      Take a Random Test
+                  <div className="mt-4 flex space-x-2">
+                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
+                      View
+                    </button>
+                    <button className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm">
+                      Take Test
                     </button>
                   </div>
                 </div>
-              )}
-
-              {activeTab === 'my-tests' && (
-                <div>
-                  <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900">My Tests</h2>
-                    <button
-                      onClick={() => setActiveTab('create-test')}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium"
-                    >
-                      Create New Test
-                    </button>
-                  </div>
-                  <TestList
-                    onView={handleViewTest}
-                    onEdit={handleEditTest}
-                    showActions={true}
-                    myTestsOnly={true}
-                  />
-                </div>
-              )}
-
-              {activeTab === 'create-test' && (
-                <div>
-                  <CreateTestForm
-                    onSuccess={handleTestCreated}
-                    onCancel={() => setActiveTab('my-tests')}
-                  />
-                </div>
-              )}
+              ))}
             </div>
-          </>
-        )}
+          )}
+        </div>
+
+        {/* Debug Info */}
+        <div className="mt-6 bg-gray-100 rounded-lg p-4">
+          <h4 className="font-medium text-gray-900 mb-2">Debug Information</h4>
+          <div className="text-sm text-gray-600 space-y-1">
+            <p>API URL: {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}</p>
+            <p>User ID: {user?.id}</p>
+            <p>User Role: {user?.role}</p>
+            <p>Token Present: {localStorage.getItem('auth-token') ? 'Yes' : 'No'}</p>
+          </div>
+        </div>
       </main>
     </div>
   );
