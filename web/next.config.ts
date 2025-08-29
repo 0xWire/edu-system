@@ -1,11 +1,16 @@
 import type { NextConfig } from "next";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_API_URL: API_URL,
+  },
   async rewrites() {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:8080/api/:path*'
+        destination: `${API_URL}/api/:path*`
       }
     ];
   },
@@ -24,7 +29,11 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Access-Control-Allow-Headers',
-            value: 'Content-Type, Authorization'
+            value: 'Content-Type, Authorization, X-Requested-With'
+          },
+          {
+            key: 'Access-Control-Allow-Credentials',
+            value: 'true'
           }
         ]
       }

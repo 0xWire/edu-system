@@ -1,5 +1,5 @@
 import api from '@/lib/api';
-import { GetTestResponse, CreateTestRequest } from '@/types/test';
+import { GetTestResponse, CreateTestRequest, CreateTestResponse } from '@/types/test';
 
 export class TestService {
   // Get all tests
@@ -25,9 +25,13 @@ export class TestService {
   }
 
   // Create a new test
-  static async createTest(testData: CreateTestRequest): Promise<void> {
+  static async createTest(testData: CreateTestRequest): Promise<CreateTestResponse> {
     try {
-      await api.post('/api/v1/tests', testData);
+      const response = await api.post('/api/v1/tests/', testData);
+      return {
+        success: true,
+        test: response.data
+      };
     } catch (error) {
       console.error('Failed to create test:', error);
       throw error;

@@ -28,6 +28,23 @@ export interface CreateTestRequest {
   questions: Question[];
 }
 
+export interface QuestionFormData {
+  question_text: string;
+  options: { answer_text: string }[];
+  correct_option: number;
+  image_url?: string;
+}
+
+export interface AnswerFormData {
+  answer_text: string;
+}
+
+export interface CreateTestResponse {
+  success: boolean;
+  error?: string;
+  test?: Test;
+}
+
 export interface GetTestResponse {
   test_id: string;
   author: string;

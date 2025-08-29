@@ -4,11 +4,13 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { TestService } from '@/services/test';
 import { GetTestResponse } from '@/types/test';
+import CreateTestForm from './CreateTestForm';
 
 export default function Dashboard() {
   const [tests, setTests] = useState<GetTestResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   const { user, logout } = useAuth();
 
@@ -108,13 +110,21 @@ export default function Dashboard() {
         <div className="bg-white shadow rounded-lg p-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-medium text-gray-900">Available Tests</h3>
-            <button
-              onClick={fetchTests}
-              disabled={loading}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm disabled:opacity-50"
-            >
-              {loading ? 'Loading...' : 'Refresh'}
-            </button>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setShowCreateForm(true)}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm"
+              >
+                Add Test
+              </button>
+              <button
+                onClick={fetchTests}
+                disabled={loading}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm disabled:opacity-50"
+              >
+                {loading ? 'Loading...' : 'Refresh'}
+              </button>
+            </div>
           </div>
 
           {tests.length === 0 ? (
@@ -122,7 +132,7 @@ export default function Dashboard() {
               <p className="text-gray-500">No tests available</p>
               <button
                 className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm"
-                onClick={() => alert('Create test functionality will be added soon')}
+                onClick={() => setShowCreateForm(true)}
               >
                 Create First Test
               </button>
@@ -150,6 +160,35 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+
+        {/* Create Test Modal */}
+        {showCreateForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">Create New Test</h3>
+                  <button
+                    onClick={() => setShowCreateForm(false)}
+                    className="text-gray-400 hover:text-gray-500"
+                  >
+                    <span className="sr-only">Close</span>
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <CreateTestForm
+                  onSuccess={() => {
+                    setShowCreateForm(false);
+                    fetchTests();
+                  }}
+                  onCancel={() => setShowCreateForm(false)}
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Debug Info */}
         <div className="mt-6 bg-gray-100 rounded-lg p-4">
