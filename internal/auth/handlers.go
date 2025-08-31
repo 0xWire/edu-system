@@ -1,18 +1,17 @@
-package handlers
+package auth
 
 import (
-	"edu-system/internal/dto"
-	"edu-system/internal/service"
+	"edu-system/internal/delivery"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
 type AuthHandler struct {
-	authService service.AuthService
+	authService AuthService
 }
 
-func NewAuthHandler(authService service.AuthService) *AuthHandler {
+func NewAuthHandler(authService AuthService) *AuthHandler {
 	return &AuthHandler{
 		authService: authService,
 	}
@@ -30,9 +29,9 @@ func NewAuthHandler(authService service.AuthService) *AuthHandler {
 // @Failure 409 {object} dto.ErrorResponse
 // @Router /auth/register [post]
 func (h *AuthHandler) Register(c *gin.Context) {
-	var req dto.RegisterRequest
+	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+		c.JSON(http.StatusBadRequest, response.ErrorResponse{
 			Error:   "validation error",
 			Message: err.Error(),
 		})
@@ -45,14 +44,14 @@ func (h *AuthHandler) Register(c *gin.Context) {
 			statusCode = http.StatusConflict
 		}
 
-		c.JSON(statusCode, dto.ErrorResponse{
+		c.JSON(statusCode, response.ErrorResponse{
 			Error:   "registration failed",
 			Message: err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusCreated, dto.SuccessResponse{
+	c.JSON(http.StatusCreated, response.SuccessResponse{
 		Message: "user registered successfully",
 	})
 }
@@ -69,30 +68,30 @@ func (h *AuthHandler) Register(c *gin.Context) {
 // @Failure 401 {object} dto.ErrorResponse
 // @Router /auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
-	var req dto.LoginRequest
+	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+		c.JSON(http.StatusBadRequest, response.ErrorResponse{
 			Error:   "validation error",
 			Message: err.Error(),
 		})
 		return
 	}
 
-	response, err := h.authService.Login(&req)
+	resp, err := h.authService.Login(&req)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
 		if err.Error() == "invalid credentials" {
 			statusCode = http.StatusUnauthorized
 		}
 
-		c.JSON(statusCode, dto.ErrorResponse{
+		c.JSON(statusCode, response.ErrorResponse{
 			Error:   "login failed",
 			Message: err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, resp)
 }
 
 // Profile godoc
@@ -109,7 +108,7 @@ func (h *AuthHandler) Profile(c *gin.Context) {
 	email, _ := c.Get("email")
 	role, _ := c.Get("role")
 
-	user := dto.UserResponse{
+	user := UserResponse{
 		ID:    uint(userID.(float64)),
 		Email: email.(string),
 		Role:  role.(string),

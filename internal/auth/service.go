@@ -1,9 +1,6 @@
-package service
+package auth
 
 import (
-	"edu-system/internal/dto"
-	"edu-system/internal/models"
-	"edu-system/internal/repository"
 	"errors"
 	"time"
 
@@ -13,23 +10,23 @@ import (
 )
 
 type AuthService interface {
-	Register(req *dto.RegisterRequest) error
-	Login(req *dto.LoginRequest) (*dto.LoginResponse, error)
+	Register(req *RegisterRequest) error
+	Login(req *LoginRequest) (*LoginResponse, error)
 }
 
 type authService struct {
-	userRepo  repository.UserRepository
+	userRepo  UserRepository
 	jwtSecret string
 }
 
-func NewAuthService(userRepo repository.UserRepository, jwtSecret string) AuthService {
+func NewAuthService(userRepo UserRepository, jwtSecret string) AuthService {
 	return &authService{
 		userRepo:  userRepo,
 		jwtSecret: jwtSecret,
 	}
 }
 
-func (s *authService) Register(req *dto.RegisterRequest) error {
+func (s *authService) Register(req *RegisterRequest) error {
 	_, err := s.userRepo.GetByEmail(req.Email)
 	if err == nil {
 		return errors.New("user with this email already exists")
@@ -43,7 +40,7 @@ func (s *authService) Register(req *dto.RegisterRequest) error {
 		return err
 	}
 
-	user := &models.User{
+	user := &User{
 		Email:     req.Email,
 		Password:  string(hashedPassword),
 		FirstName: req.FirstName,
@@ -54,7 +51,7 @@ func (s *authService) Register(req *dto.RegisterRequest) error {
 	return s.userRepo.Create(user)
 }
 
-func (s *authService) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
+func (s *authService) Login(req *LoginRequest) (*LoginResponse, error) {
 	user, err := s.userRepo.GetByEmail(req.Email)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -72,9 +69,9 @@ func (s *authService) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 		return nil, err
 	}
 
-	return &dto.LoginResponse{
+	return &LoginResponse{
 		Token: token,
-		User: dto.UserResponse{
+		User: UserResponse{
 			ID:        user.ID,
 			Email:     user.Email,
 			FirstName: user.FirstName,
@@ -84,7 +81,7 @@ func (s *authService) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 	}, nil
 }
 
-func (s *authService) generateJWT(user *models.User) (string, error) {
+func (s *authService) generateJWT(user *User) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id": user.ID,
 		"email":   user.Email,

@@ -1,9 +1,7 @@
-package service
+package test
 
 import (
-	"edu-system/internal/dto"
-	"edu-system/internal/models"
-	"edu-system/internal/repository"
+	"edu-system/internal/test/dto"
 )
 
 type TestService interface {
@@ -15,32 +13,32 @@ type TestService interface {
 }
 
 type testService struct {
-	testRepo repository.TestRepository
+	testRepo TestRepository
 }
 
-func NewTestService(testRepo repository.TestRepository) TestService {
+func NewTestService(testRepo TestRepository) TestService {
 	return &testService{
 		testRepo: testRepo,
 	}
 }
 
 func (t testService) CreateTest(req *dto.CreateTestRequest) error {
-	test := &models.Test{
+	test := &Test{
 		Author:      req.Author,
 		Title:       req.Title,
 		Description: req.Description,
-		Questions:   make([]models.Question, 0),
+		Questions:   make([]Question, 0),
 	}
 
 	for _, q := range req.Questions {
-		question := models.Question{
+		question := Question{
 			QuestionText:  q.QuestionText,
-			Options:       make([]models.Option, 0),
+			Options:       make([]Option, 0),
 			CorrectOption: q.CorrectOption,
 		}
 
 		for _, option := range q.Options {
-			question.Options = append(question.Options, models.Option{
+			question.Options = append(question.Options, Option{
 				OptionText: option.AnswerText,
 				ImageURL:   option.ImageURL,
 			})
@@ -98,17 +96,17 @@ func (t testService) UpdateTest(testID string, req *dto.UpdateTestRequest) error
 	test.Title = req.Title
 	test.Description = req.Description
 
-	test.Questions = make([]models.Question, 0)
+	test.Questions = make([]Question, 0)
 
 	for _, q := range req.Questions {
-		question := models.Question{
+		question := Question{
 			QuestionText:  q.QuestionText,
-			Options:       make([]models.Option, 0),
+			Options:       make([]Option, 0),
 			CorrectOption: q.CorrectOption,
 		}
 
 		for _, option := range q.Options {
-			question.Options = append(question.Options, models.Option{
+			question.Options = append(question.Options, Option{
 				OptionText: option.AnswerText,
 				ImageURL:   option.ImageURL,
 			})

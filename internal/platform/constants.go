@@ -1,4 +1,4 @@
-package constants
+package platform
 
 const (
 	// User roles

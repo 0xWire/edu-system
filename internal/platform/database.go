@@ -1,7 +1,8 @@
-package database
+package platform
 
 import (
-	"edu-system/internal/models"
+	"edu-system/internal/auth"
+	"edu-system/internal/test"
 	"log"
 
 	"gorm.io/driver/sqlite"
@@ -18,10 +19,10 @@ func InitDB(dbPath string) *gorm.DB {
 	}
 
 	if err := db.AutoMigrate(
-		&models.User{},
-		&models.Test{},
-		&models.Question{},
-		&models.Option{},
+		&auth.User{},
+		&test.Test{},
+		&test.Question{},
+		&test.Option{},
 	); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}

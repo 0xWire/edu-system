@@ -1,4 +1,4 @@
-package models
+package test
 
 import (
 	"github.com/google/uuid"
