@@ -1,13 +1,12 @@
 package main
 
 import (
-	"edu-system/internal/config"
-	"edu-system/internal/database"
-	"edu-system/internal/handlers"
-	"edu-system/internal/middleware"
-	"edu-system/internal/repository"
-	"edu-system/internal/routes"
-	"edu-system/internal/service"
+	"edu-system/internal/auth"
+	"edu-system/internal/platform"
+	"edu-system/internal/platform/authrepo"
+	"edu-system/internal/platform/http"
+	"edu-system/internal/platform/testrepo"
+	"edu-system/internal/test"
 	"fmt"
 	"log"
 
@@ -15,20 +14,20 @@ import (
 )
 
 func main() {
-	cfg := config.Load()
-	db := database.InitDB(cfg.DBPath)
+	cfg := platform.Load()
+	db := platform.InitDB(cfg.DBPath)
 
 	// Initialize repositories
-	userRepo := repository.NewUserRepository(db)
-	testRepo := repository.NewTestRepository(db)
+	userRepo := authrepo.NewUserRepository(db)
+	testRepo := testrepo.NewTestRepository(db)
 
 	// Initialize services
-	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
-	testService := service.NewTestService(testRepo)
+	authService := auth.NewAuthService(userRepo, cfg.JWTSecret)
+	testService := test.NewTestService(testRepo)
 
 	// Initialize handlers
-	authHandler := handlers.NewAuthHandler(authService)
-	testHandler := handlers.NewTestHandler(testService)
+	authHandler := auth.NewAuthHandler(authService)
+	testHandler := test.NewTestHandler(testService)
 
 	gin.SetMode(cfg.GinMode)
 	engine := gin.Default()
@@ -46,10 +45,16 @@ func main() {
 	}))
 
 	// Add CORS middleware first, before any routes
-	engine.Use(middleware.CORS())
+	engine.Use(platform.CORS())
 
-	router := routes.NewRouter(authHandler, testHandler, cfg.JWTSecret)
-	router.SetupRoutes(engine)
+	// Create JWT middleware
+	jwtMW := platform.JWTAuth(cfg.JWTSecret)
+
+	// Mount all routes using feature-based routing
+	response.MountV1(engine,
+		func(v1 gin.IRouter) { auth.RegisterRoutes(v1, authHandler, jwtMW) },
+		func(v1 gin.IRouter) { test.RegisterRoutes(v1, testHandler, jwtMW) },
+	)
 
 	log.Printf("Server starting on port %s", cfg.Port)
 	if err := engine.Run(":" + cfg.Port); err != nil {
