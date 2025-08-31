@@ -38,6 +38,12 @@ func main() {
 	// Create JWT middleware
 	jwtMW := middleware.JWTAuth(cfg.JWTSecret)
 
+	// Create CORS middleware
+	cors := middleware.CORS()
+
+	// Setup middleware
+	server.SetupMiddleware(cors)
+
 	// Setup routes with feature-based routing
 	server.SetupRoutes(
 		func(v1 gin.IRouter) { auth.RegisterRoutes(v1, authHandler, jwtMW) },
