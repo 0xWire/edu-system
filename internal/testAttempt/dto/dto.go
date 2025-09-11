@@ -1,26 +1,56 @@
-package testAttempt
+package dto
 
-type CreateTestAttemptRequest struct {
-	TestID   string `json:"test_id" binding:"required"`
-	Username string `json:"username" binding:"required"`
+type StartAttemptRequest struct {
+	TestID    string  `json:"test_id" validate:"required,uuid4"`
+	GuestName *string `json:"guest_name,omitempty" validate:"omitempty,min=1,max=64"`
 }
 
-type SubmitTestAttemptRequest struct {
-	AttemptID       string           `json:"attempt_id" binding:"required"`
-	SelectedAnswers []SelectedAnswer `json:"selected_answers" binding:"required,min=1"`
+type StartAttemptResponse struct {
+	Attempt AttemptView `json:"attempt"`
 }
 
-type SelectedAnswer struct {
-	QuestionID     string `json:"question_id" binding:"required"`
-	SelectedOption int    `json:"selected_option" binding:"required,min=0"`
+type AttemptView struct {
+	AttemptID   string `json:"attempt_id"`
+	Status      string `json:"status"`
+	Version     int    `json:"version"`
+	TimeLeftSec int64  `json:"time_left_sec"`
+	Total       int    `json:"total"`
+	Cursor      int    `json:"cursor"`
+	GuestName   string `json:"guest_name,omitempty"`
 }
 
-type GetTestAttemptResponse struct {
-	AttemptID       string           `json:"attempt_id"`
-	TestID          string           `json:"test_id"`
-	Username        string           `json:"username"`
-	Score           int              `json:"score"`
-	TotalQuestions  int              `json:"total_questions"`
-	Completed       bool             `json:"completed"`
-	SelectedAnswers []SelectedAnswer `json:"selected_answers,omitempty"`
+type NextQuestionResponse struct {
+	Attempt  AttemptView  `json:"attempt"`
+	Question QuestionView `json:"question"`
+}
+
+type QuestionView struct {
+	ID           string       `json:"id"`
+	QuestionText string       `json:"question_text"`
+	ImageURL     string       `json:"image_url,omitempty"`
+	Options      []OptionView `json:"options"`
+}
+
+type OptionView struct {
+	ID         string `json:"id"`
+	OptionText string `json:"option_text"`
+	ImageURL   string `json:"image_url,omitempty"`
+}
+
+type AnswerRequest struct {
+	Version int         `json:"version" validate:"gte=0"`
+	Payload interface{} `json:"payload" validate:"required"`
+}
+
+type AnswerResponse struct {
+	Attempt    AttemptView `json:"attempt"`
+	QuestionID string      `json:"question_id"`
+}
+
+type SubmitRequest struct {
+	Version int `json:"version" validate:"gte=0"`
+}
+
+type SubmitResponse struct {
+	Attempt AttemptView `json:"attempt"`
 }

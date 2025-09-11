@@ -51,6 +51,11 @@ type Test struct {
 	Title       string         `json:"title" gorm:"not null"`
 	Description string         `json:"description" gorm:"not null"`
 	Questions   []Question     `json:"questions" gorm:"foreignKey:TestID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+
+	DurationSec    int        `json:"duration_sec" gorm:"not null;default:0"` // 0 = no time limit
+	AllowGuests    bool       `json:"allow_guests" gorm:"not null;default:false"`
+	AvailableFrom  *time.Time `json:"available_from" gorm:"index"`
+	AvailableUntil *time.Time `json:"available_until" gorm:"index"`
 }
 
 func (t *Test) BeforeCreate(tx *gorm.DB) error {
