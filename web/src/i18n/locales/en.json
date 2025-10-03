@@ -1,0 +1,151 @@
+{
+  "language": {
+    "label": "Language",
+    "en": "English",
+    "uk": "Ukrainian"
+  },
+  "common": {
+    "appName": "Education System",
+    "actions": {
+      "logout": "Sign out",
+      "createTest": "Create test",
+      "refresh": "Refresh list",
+      "backToDashboard": "Back to dashboard",
+      "startTest": "Start test",
+      "retry": "Try again",
+      "openTest": "Open test",
+      "share": "Share link",
+      "newTest": "New test",
+      "copyLink": "Copy link",
+      "copied": "Link copied!",
+      "close": "Close",
+      "submit": "Submit answer",
+      "submitting": "Submitting…",
+      "finish": "Finish attempt",
+      "cancel": "Cancel",
+      "startOver": "Start over"
+    },
+    "helpers": {
+      "exampleName": "e.g. Jane Doe"
+    },
+    "status": {
+      "loading": "Loading…",
+      "preparing": "Preparing the test…",
+      "nextQuestion": "Loading the next question…"
+    }
+  },
+  "dashboard": {
+    "tag": "dashboard",
+    "greeting": "Hello, {name}!",
+    "greetingFallback": "Hello!",
+    "overviewTag": "overview",
+    "overviewTitle": "All your tests in one place",
+    "overviewBody": "Create, edit and launch tests for learners in just one click. Monitor statistics and stay in control right from this dashboard.",
+    "stats": {
+      "totalTests": {
+        "label": "Total tests",
+        "empty": "Create your first test to get started",
+        "default": "Active tests"
+      },
+      "totalQuestions": {
+        "label": "Total questions",
+        "empty": "Add questions to your tests",
+        "default": "Questions across all tests"
+      },
+      "averageQuestions": {
+        "label": "Average questions",
+        "empty": "No data yet",
+        "default": "Average per test"
+      },
+      "authors": {
+        "label": "Authors",
+        "empty": "Only you so far",
+        "default": "Unique authors"
+      }
+    },
+    "connection": {
+      "errorTitle": "Connection issue",
+      "errorDescription": "We couldn't load the test list. Please try again.",
+      "retry": "Retry",
+      "successTitle": "API connection active",
+      "successDescription": "Loaded {count} tests successfully",
+      "serviceOnline": "Service online"
+    },
+    "library": {
+      "title": "Test library",
+      "subtitle": "Select a test to review or share with learners.",
+      "emptyTitle": "No tests yet",
+      "emptyDescription": "Start by creating your first test. Add questions, answer options and share the link with learners.",
+      "emptyAction": "Create test",
+      "quickAdd": "+ New test",
+      "testTag": "test",
+      "questions": "{count} questions",
+      "authorLabel": "Author",
+      "unknownAuthor": "Not specified",
+      "ready": "Ready to launch"
+    },
+    "modal": {
+      "tag": "New test",
+      "title": "Create a test",
+      "close": "Close"
+    }
+  },
+  "takeTest": {
+    "invitationGuest": "Guest mode is perfect for open attempts without sign-in — just add a name so we know who is taking the test.",
+    "invitationAccount": "Use your account to keep detailed stats and save progress.",
+    "missingTag": "navigation error",
+    "missingTitle": "No test selected",
+    "missingDescription": "It looks like you opened the test page without specifying an identifier. Return to the dashboard and pick a test.",
+    "ctaDashboard": "Open dashboard",
+    "setupTag": "test setup",
+    "setupTitle": "How would you like to start?",
+    "setupDescription": "Choose the mode that fits you best. Guest mode only needs a name while signed-in attempts will link results to your profile.",
+    "accountOption": "Take the test with my account",
+    "accountDescription": "Keeps access to your profile and attempt history.",
+    "guestOption": "Take the test as a guest",
+    "guestDescription": "Share this link with learners who don't need to sign in.",
+    "tipTag": "tip",
+    "tipText": "Guest attempts don't save detailed analytics. Switch to your account if you need full progress tracking.",
+    "guestLabel": "Guest name",
+    "shareTag": "share the test",
+    "shareTitle": "Invite participants",
+    "shareDescription": "Copy the link and send it to learners. Everyone can choose the mode that works best.",
+    "shareLabel": "Test link",
+    "adviceTitle": "Advice",
+    "adviceText": "If the test is timed, remind participants ahead of time and make sure they have a stable connection."
+  },
+  "attempt": {
+    "tag": "test attempt",
+    "guestLabel": "Guest mode: {name}",
+    "subtitleSubmitted": "Attempt submitted for review",
+    "subtitleCancelled": "Attempt cancelled",
+    "subtitleActive": "Do not close this page until you finish.",
+    "questionProgress": "Question {current} of {total}",
+    "errorTitle": "Could not start the test",
+    "errorDescription": "Please try again or contact your instructor.",
+    "answerError": "We couldn't submit your answer. Please try again.",
+    "submitError": "We couldn't submit the test. Please try again.",
+    "cancelError": "We couldn't cancel the attempt. Please try again.",
+    "completedTag": "test completed",
+    "completedTitle": "Great job! Your attempt is submitted",
+    "completedDescription": "Your answers have been recorded. You can close this page or go back to other tests.",
+    "resultLabel": "Result",
+    "loader": "Preparing the test…",
+    "nextQuestion": "Loading the next question…",
+    "buttons": {
+      "tryAgain": "Try again",
+      "finish": "Finish attempt",
+      "cancel": "Cancel attempt"
+    }
+  },
+  "question": {
+    "tag": "question",
+    "answerHint": "Select an option and press \"Submit answer\". Your answer is saved immediately.",
+    "optionImageAlt": "Answer option illustration",
+    "imageAlt": "Question illustration"
+  },
+  "timer": {
+    "label": "Time remaining",
+    "autoSubmit": "When time is up your answer will be submitted automatically."
+  }
+}
