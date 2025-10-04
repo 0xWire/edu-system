@@ -1,7 +1,7 @@
 package dto
 
 type StartAttemptRequest struct {
-	TestID    string  `json:"test_id" validate:"required,uuid4"`
+	TestID    string  `json:"test_id" validate:"required"`
 	GuestName *string `json:"guest_name,omitempty" validate:"omitempty,min=1,max=64"`
 }
 

@@ -8,11 +8,13 @@ import (
 )
 
 var (
-	ErrClosed          = errors.New("attempt closed")
-	ErrVersionMismatch = errors.New("version mismatch")
-	ErrInvalidState    = errors.New("invalid state")
-	ErrValidation      = errors.New("validation error")
-	ErrNoMoreQuestions = errors.New("no more questions")
+	ErrClosed           = errors.New("attempt closed")
+	ErrVersionMismatch  = errors.New("version mismatch")
+	ErrInvalidState     = errors.New("invalid state")
+	ErrValidation       = errors.New("validation error")
+	ErrNoMoreQuestions  = errors.New("no more questions")
+	ErrForbidden        = errors.New("forbidden")
+	ErrGuestsNotAllowed = errors.New("guests not allowed")
 )
 
 type AttemptStatus string
@@ -173,6 +175,12 @@ func (a *Attempt) Answers() map[QuestionID]Answer {
 	return out
 }
 
+func (a *Attempt) Plan() []QuestionID {
+	out := make([]QuestionID, len(a.order))
+	copy(out, a.order)
+	return out
+}
+
 func (a *Attempt) NextQuestionID(now time.Time) (QuestionID, error) {
 	if a.exceeded(now.UTC()) {
 		if a.status != StatusExpired {
@@ -289,6 +297,22 @@ func validateScores(score, max float64) error {
 	}
 	if score < 0 || score > max {
 		return fmt.Errorf("%w: score must be within [0, max]", ErrValidation)
+	}
+	return nil
+}
+
+func validatePersistedScores(status AttemptStatus, score, max float64) error {
+	if math.IsNaN(score) || math.IsNaN(max) || math.IsInf(score, 0) || math.IsInf(max, 0) {
+		return fmt.Errorf("%w: score/max must be finite numbers", ErrValidation)
+	}
+	if max < 0 {
+		return fmt.Errorf("%w: max must be >= 0", ErrValidation)
+	}
+	if score < 0 || score > max {
+		return fmt.Errorf("%w: score must be within [0, max]", ErrValidation)
+	}
+	if status != StatusActive && max == 0 {
+		return fmt.Errorf("%w: max must be > 0", ErrValidation)
 	}
 	return nil
 }

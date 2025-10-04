@@ -18,6 +18,10 @@ type Repo struct {
 
 func NewTestAttemptRepository(db *gorm.DB) *Repo { return &Repo{db: db} }
 
+func Migrate(db *gorm.DB) error {
+	return db.AutoMigrate(&attemptRow{}, &answerRow{})
+}
+
 func (r *Repo) Create(ctx context.Context, a *domain.Attempt) (domain.AttemptID, error) {
 	row, err := toRow(a)
 	if err != nil {
@@ -226,50 +230,62 @@ func toRow(a *domain.Attempt) (*attemptRow, error) {
 }
 
 func toDomain(r *attemptRow) (*domain.Attempt, error) {
-	var guest *string
-	if r.GuestName != nil {
-		guest = r.GuestName
-	}
-	a := domain.NewAttempt(domain.AttemptID(r.ID), domain.TestID(r.TestID), domain.UserID(r.UserID), guest, r.StartedAt, time.Duration(r.DurationSec)*time.Second, r.Seed)
-
 	var ids []string
 	if err := json.Unmarshal(r.OrderJSON, &ids); err != nil {
 		return nil, err
 	}
-	qids := make([]domain.QuestionID, len(ids))
+	plan := make([]domain.QuestionID, len(ids))
 	for i, s := range ids {
-		qids[i] = domain.QuestionID(s)
-	}
-	a.InitializePlan(qids)
-
-	for i := 0; i < r.Cursor; i++ {
-		break
+		plan[i] = domain.QuestionID(s)
 	}
 
+	answers := make(map[domain.QuestionID]domain.Answer, len(r.Answers))
 	for _, row := range r.Answers {
-		ap, err := jsonToPayload([]byte(row.Payload))
+		payload, err := jsonToPayload([]byte(row.Payload))
 		if err != nil {
 			return nil, err
 		}
-		a.AnswerCurrent(a.Version(), r.UpdatedAt, ap)
+		qid := domain.QuestionID(row.QuestionID)
+		answers[qid] = domain.Answer{
+			QuestionID: qid,
+			Payload:    payload,
+			IsCorrect:  row.IsCorrect,
+			Score:      row.Score,
+		}
 	}
 
-	for a.Version() < r.Version {
-		break
+	attempt, err := domain.RehydrateAttempt(
+		domain.AttemptID(r.ID),
+		domain.TestID(r.TestID),
+		domain.UserID(r.UserID),
+		r.GuestName,
+		r.StartedAt,
+		time.Duration(r.DurationSec)*time.Second,
+		r.Seed,
+		plan,
+		r.Cursor,
+		answers,
+		domain.AttemptStatus(r.Status),
+		r.Version,
+		r.SubmittedAt,
+		r.ExpiredAt,
+		r.Score,
+		r.MaxScore,
+	)
+	if err != nil {
+		return nil, err
 	}
 
-	if r.SubmittedAt != nil {
-		_, _ = a.Submit(a.Version(), r.SubmittedAt.UTC(), r.Score, r.MaxScore)
-	}
-	if r.ExpiredAt != nil && a.Status() == domain.StatusActive {
-	}
-
-	return a, nil
+	return attempt, nil
 }
 
 func aOrder(a *domain.Attempt) []string {
-	order := make([]string, 0, a.Total())
-	return order
+	plan := a.Plan()
+	out := make([]string, 0, len(plan))
+	for _, id := range plan {
+		out = append(out, string(id))
+	}
+	return out
 }
 
 // payload JSON <-> domain.

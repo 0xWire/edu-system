@@ -62,10 +62,10 @@ func (s *Service) StartAttempt(ctx context.Context, userID *UserID, guestName *s
 		return "", err
 	}
 	if userID == nil && !allowGuests {
-		return "", errors.New("guests not allowed for this test")
+		return "", ErrGuestsNotAllowed
 	}
 	if err := s.policy.CanStartAttempt(ctx, userID, guestName, testID); err != nil {
-		return "", fmt.Errorf("forbidden: %w", err)
+		return "", fmt.Errorf("%w: %v", ErrForbidden, err)
 	}
 
 	now := s.clock.Now()
@@ -87,7 +87,7 @@ func (s *Service) StartAttempt(ctx context.Context, userID *UserID, guestName *s
 	if userID != nil {
 		uid = *userID
 	}
-	a := NewAttempt(AttemptID(newUUID()), testID, uid, guestName, now, time.Duration(dur)*time.Second, seed)
+	a := NewAttempt(NewAttemptID(), testID, uid, guestName, now, time.Duration(dur)*time.Second, seed)
 
 	vis, err := s.tests.ListVisibleQuestions(ctx, string(testID))
 	if err != nil {
@@ -105,7 +105,7 @@ func (s *Service) NextQuestion(ctx context.Context, requester *UserID, id Attemp
 		return AttemptView{}, QuestionView{}, err
 	}
 	if err := s.policy.CanModifyAttempt(ctx, requester, a); err != nil {
-		return AttemptView{}, QuestionView{}, fmt.Errorf("forbidden: %w", err)
+		return AttemptView{}, QuestionView{}, fmt.Errorf("%w: %v", ErrForbidden, err)
 	}
 
 	qid, err := a.NextQuestionID(s.clock.Now())
@@ -136,7 +136,7 @@ func (s *Service) AnswerCurrent(ctx context.Context, requester *UserID, id Attem
 		return AttemptView{}, AnsweredView{}, err
 	}
 	if err := s.policy.CanModifyAttempt(ctx, requester, a); err != nil {
-		return AttemptView{}, AnsweredView{}, fmt.Errorf("forbidden: %w", err)
+		return AttemptView{}, AnsweredView{}, fmt.Errorf("%w: %v", ErrForbidden, err)
 	}
 	newVersion, qid, err := a.AnswerCurrent(version, s.clock.Now(), payload)
 	if err != nil {
@@ -159,7 +159,7 @@ func (s *Service) Submit(ctx context.Context, requester *UserID, id AttemptID, v
 		return AttemptView{}, err
 	}
 	if err := s.policy.CanModifyAttempt(ctx, requester, a); err != nil {
-		return AttemptView{}, fmt.Errorf("forbidden: %w", err)
+		return AttemptView{}, fmt.Errorf("%w: %v", ErrForbidden, err)
 	}
 	qs, err := s.tests.ListQuestionsForScoring(ctx, string(a.Test()))
 	if err != nil {
@@ -188,7 +188,7 @@ func (s *Service) Cancel(ctx context.Context, requester *UserID, id AttemptID, v
 		return AttemptView{}, err
 	}
 	if err := s.policy.CanModifyAttempt(ctx, requester, a); err != nil {
-		return AttemptView{}, fmt.Errorf("forbidden: %w", err)
+		return AttemptView{}, fmt.Errorf("%w: %v", ErrForbidden, err)
 	}
 	_, err = a.Cancel(version, s.clock.Now())
 	if err != nil {
@@ -303,16 +303,6 @@ func simpleScore(qs []QuestionForScoring, answers map[QuestionID]Answer) (float6
 		}
 	}
 	return score, max, nil
-}
-
-// TODO: separate into a new file
-func newUUID() string {
-	var b [16]byte
-	_, _ = rand.Read(b[:])
-	b[6] = (b[6] & 0x0f) | 0x40
-	b[8] = (b[8] & 0x3f) | 0x80
-	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
-		b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
 }
 
 func isCorrectJSON(qType string, expected []byte, payload AnswerPayload) (bool, error) {

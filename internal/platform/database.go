@@ -2,6 +2,7 @@ package platform
 
 import (
 	"edu-system/internal/auth"
+	"edu-system/internal/platform/testattemptrepo"
 	"edu-system/internal/test"
 	"log"
 
@@ -25,6 +26,10 @@ func InitDB(dbPath string) *gorm.DB {
 		&test.Option{},
 	); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
+	}
+
+	if err := testattemptrepo.Migrate(db); err != nil {
+		log.Fatalf("Failed to migrate test attempt tables: %v", err)
 	}
 
 	log.Println("Database initialized successfully")

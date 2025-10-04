@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -47,7 +48,7 @@ func (h *Handlers) Start(c *gin.Context) {
 		writeDomainErr(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, dto.StartAttemptResponse{Attempt: dto.AttemptView{
+	c.JSON(http.StatusOK, dto.AttemptView{
 		AttemptID:   av.AttemptID,
 		Status:      av.Status,
 		Version:     av.Version,
@@ -55,7 +56,7 @@ func (h *Handlers) Start(c *gin.Context) {
 		Total:       av.Total,
 		Cursor:      av.Cursor,
 		GuestName:   av.GuestName,
-	}})
+	})
 }
 
 // GET /v1/attempts/:id/question
@@ -231,6 +232,13 @@ func userIDFromCtx(c *gin.Context) (uint64, bool) {
 		return uint64(v), true
 	case int:
 		return uint64(v), true
+	case float64:
+		return uint64(v), true
+	case string:
+		if parsed, err := strconv.ParseUint(v, 10, 64); err == nil {
+			return parsed, true
+		}
+		return 0, false
 	default:
 		return 0, false
 	}
@@ -248,6 +256,8 @@ func writeDomainErr(c *gin.Context, err error) {
 		c.JSON(http.StatusBadRequest, errJSON("invalid", err.Error()))
 	case errors.Is(err, ErrNoMoreQuestions):
 		c.JSON(http.StatusOK, gin.H{"done": true})
+	case errors.Is(err, ErrGuestsNotAllowed), errors.Is(err, ErrForbidden):
+		c.JSON(http.StatusForbidden, errJSON("forbidden", err.Error()))
 	default:
 		c.JSON(http.StatusInternalServerError, errJSON("internal", err.Error()))
 	}

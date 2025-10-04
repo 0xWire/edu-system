@@ -49,6 +49,7 @@ func main() {
 
 	// Create JWT middleware
 	jwtMW := middleware.JWTAuth(cfg.JWTSecret)
+	optionalJWTMW := middleware.OptionalJWTAuth(cfg.JWTSecret)
 
 	// Create CORS middleware
 	cors := middleware.CORS()
@@ -60,7 +61,7 @@ func main() {
 	server.SetupRoutes(
 		func(v1 gin.IRouter) { auth.RegisterRoutes(v1, authHandler, jwtMW) },
 		func(v1 gin.IRouter) { test.RegisterRoutes(v1, testHandler, jwtMW) },
-		func(v1 gin.IRouter) { testAttempt.RegisterRoutes(v1, testAttemptHandler, jwtMW) },
+		func(v1 gin.IRouter) { testAttempt.RegisterRoutes(v1, testAttemptHandler, optionalJWTMW) },
 	)
 
 	// Start server
