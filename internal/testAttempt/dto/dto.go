@@ -1,8 +1,8 @@
 package dto
 
 type StartAttemptRequest struct {
-	TestID    string  `json:"test_id" validate:"required"`
-	GuestName *string `json:"guest_name,omitempty" validate:"omitempty,min=1,max=64"`
+	AssignmentID string  `json:"assignment_id" validate:"required,uuid4"`
+	GuestName    *string `json:"guest_name,omitempty" validate:"omitempty,min=1,max=64"`
 }
 
 type StartAttemptResponse struct {
@@ -10,13 +10,14 @@ type StartAttemptResponse struct {
 }
 
 type AttemptView struct {
-	AttemptID   string `json:"attempt_id"`
-	Status      string `json:"status"`
-	Version     int    `json:"version"`
-	TimeLeftSec int64  `json:"time_left_sec"`
-	Total       int    `json:"total"`
-	Cursor      int    `json:"cursor"`
-	GuestName   string `json:"guest_name,omitempty"`
+	AttemptID    string `json:"attempt_id"`
+	AssignmentID string `json:"assignment_id"`
+	Status       string `json:"status"`
+	Version      int    `json:"version"`
+	TimeLeftSec  int64  `json:"time_left_sec"`
+	Total        int    `json:"total"`
+	Cursor       int    `json:"cursor"`
+	GuestName    string `json:"guest_name,omitempty"`
 }
 
 type NextQuestionResponse struct {

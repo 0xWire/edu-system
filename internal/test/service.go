@@ -1,15 +1,19 @@
 package test
 
 import (
+	"errors"
+
 	"edu-system/internal/test/dto"
 )
 
+var ErrForbidden = errors.New("forbidden")
+
 type TestService interface {
-	CreateTest(req *dto.CreateTestRequest) error
-	GetTest(testID string) (*dto.GetTestResponse, error)
-	GetAllTests() ([]*dto.GetTestResponse, error)
-	UpdateTest(testID string, req *dto.UpdateTestRequest) error
-	DeleteTest(testID string) error
+	CreateTest(ownerID uint, req *dto.CreateTestRequest) error
+	GetTest(ownerID uint, testID string) (*dto.GetTestResponse, error)
+	ListTests(ownerID uint) ([]*dto.GetTestResponse, error)
+	UpdateTest(ownerID uint, testID string, req *dto.UpdateTestRequest) error
+	DeleteTest(ownerID uint, testID string) error
 }
 
 type testService struct {
@@ -22,8 +26,9 @@ func NewTestService(testRepo TestRepository) TestService {
 	}
 }
 
-func (t testService) CreateTest(req *dto.CreateTestRequest) error {
+func (t testService) CreateTest(ownerID uint, req *dto.CreateTestRequest) error {
 	test := &Test{
+		AuthorID:    ownerID,
 		Author:      req.Author,
 		Title:       req.Title,
 		Description: req.Description,
@@ -50,10 +55,13 @@ func (t testService) CreateTest(req *dto.CreateTestRequest) error {
 	return t.testRepo.Create(test)
 }
 
-func (t testService) GetTest(testID string) (*dto.GetTestResponse, error) {
+func (t testService) GetTest(ownerID uint, testID string) (*dto.GetTestResponse, error) {
 	test, err := t.testRepo.GetByID(testID)
 	if err != nil {
 		return nil, err
+	}
+	if test.AuthorID != ownerID {
+		return nil, ErrForbidden
 	}
 
 	response := &dto.GetTestResponse{
@@ -87,10 +95,13 @@ func (t testService) GetTest(testID string) (*dto.GetTestResponse, error) {
 	return response, nil
 }
 
-func (t testService) UpdateTest(testID string, req *dto.UpdateTestRequest) error {
+func (t testService) UpdateTest(ownerID uint, testID string, req *dto.UpdateTestRequest) error {
 	test, err := t.testRepo.GetByID(testID)
 	if err != nil {
 		return err
+	}
+	if test.AuthorID != ownerID {
+		return ErrForbidden
 	}
 
 	test.Title = req.Title
@@ -118,12 +129,19 @@ func (t testService) UpdateTest(testID string, req *dto.UpdateTestRequest) error
 	return t.testRepo.Update(test)
 }
 
-func (t testService) DeleteTest(testID string) error {
+func (t testService) DeleteTest(ownerID uint, testID string) error {
+	test, err := t.testRepo.GetByID(testID)
+	if err != nil {
+		return err
+	}
+	if test.AuthorID != ownerID {
+		return ErrForbidden
+	}
 	return t.testRepo.Delete(testID)
 }
 
-func (t testService) GetAllTests() ([]*dto.GetTestResponse, error) {
-	tests, err := t.testRepo.GetAll()
+func (t testService) ListTests(ownerID uint) ([]*dto.GetTestResponse, error) {
+	tests, err := t.testRepo.GetByOwner(ownerID)
 	if err != nil {
 		return nil, err
 	}

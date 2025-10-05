@@ -9,11 +9,11 @@ import TestTimer from './TestTimer';
 import { useI18n } from '@/contexts/LanguageContext';
 
 interface TestAttemptPageProps {
-  testId: string;
+  assignmentId: string;
   guestName?: string;
 }
 
-export default function TestAttemptPage({ testId, guestName }: TestAttemptPageProps) {
+export default function TestAttemptPage({ assignmentId, guestName }: TestAttemptPageProps) {
   const router = useRouter();
   const { t } = useI18n();
 
@@ -40,7 +40,7 @@ export default function TestAttemptPage({ testId, guestName }: TestAttemptPagePr
     const startTestAttempt = async () => {
       try {
         setLoading(true);
-        const startData: { test_id: string; guest_name?: string } = { test_id: testId };
+        const startData: { assignment_id: string; guest_name?: string } = { assignment_id: assignmentId };
         if (guestName) {
           startData.guest_name = guestName;
         }
@@ -70,7 +70,7 @@ export default function TestAttemptPage({ testId, guestName }: TestAttemptPagePr
     return () => {
       isMounted = false;
     };
-  }, [testId, guestName]);
+  }, [assignmentId, guestName]);
 
   const handleSubmitAnswer = async (answerPayload: AnswerPayload) => {
     if (!attempt) return;
@@ -79,7 +79,7 @@ export default function TestAttemptPage({ testId, guestName }: TestAttemptPagePr
       setLoading(true);
       const { attempt: updatedAttempt } = await TestAttemptService.submitAnswer(attempt.attempt_id, {
         version: attempt.version,
-        answer: answerPayload
+        payload: answerPayload
       });
       setAttempt(updatedAttempt);
       setErrorKey(null);
@@ -89,7 +89,7 @@ export default function TestAttemptPage({ testId, guestName }: TestAttemptPagePr
         setAttempt(latestAttempt);
         setCurrentQuestion(question);
       } else {
-        await handleSubmitTest();
+        await handleSubmitTest(updatedAttempt);
       }
     } catch (err) {
       console.error(err);
@@ -99,13 +99,14 @@ export default function TestAttemptPage({ testId, guestName }: TestAttemptPagePr
     }
   };
 
-  const handleSubmitTest = async () => {
-    if (!attempt) return;
+  const handleSubmitTest = async (currentAttempt?: AttemptView) => {
+    const attemptToSubmit = currentAttempt ?? attempt;
+    if (!attemptToSubmit) return;
 
     try {
       setLoading(true);
-      const finalAttempt = await TestAttemptService.submitAttempt(attempt.attempt_id, {
-        version: attempt.version
+      const finalAttempt = await TestAttemptService.submitAttempt(attemptToSubmit.attempt_id, {
+        version: attemptToSubmit.version
       });
       setAttempt(finalAttempt);
       setCompleted(true);

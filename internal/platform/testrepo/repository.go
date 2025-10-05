@@ -34,9 +34,9 @@ func (r *testRepository) GetByID(id string) (*test.Test, error) {
 	return &t, nil
 }
 
-func (r *testRepository) GetAll() ([]*test.Test, error) {
+func (r *testRepository) GetByOwner(ownerID uint) ([]*test.Test, error) {
 	var tests []*test.Test
-	err := r.db.Preload("Questions.Options").Find(&tests).Error
+	err := r.db.Preload("Questions.Options").Where("author_id = ?", ownerID).Find(&tests).Error
 	if err != nil {
 		return nil, err
 	}

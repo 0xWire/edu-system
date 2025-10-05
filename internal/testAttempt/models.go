@@ -8,13 +8,14 @@ import (
 )
 
 var (
-	ErrClosed           = errors.New("attempt closed")
-	ErrVersionMismatch  = errors.New("version mismatch")
-	ErrInvalidState     = errors.New("invalid state")
-	ErrValidation       = errors.New("validation error")
-	ErrNoMoreQuestions  = errors.New("no more questions")
-	ErrForbidden        = errors.New("forbidden")
-	ErrGuestsNotAllowed = errors.New("guests not allowed")
+	ErrClosed             = errors.New("attempt closed")
+	ErrVersionMismatch    = errors.New("version mismatch")
+	ErrInvalidState       = errors.New("invalid state")
+	ErrValidation         = errors.New("validation error")
+	ErrNoMoreQuestions    = errors.New("no more questions")
+	ErrForbidden          = errors.New("forbidden")
+	ErrGuestsNotAllowed   = errors.New("guests not allowed")
+	ErrAssignmentNotFound = errors.New("assignment not found")
 )
 
 type AttemptStatus string
@@ -27,10 +28,11 @@ const (
 )
 
 type (
-	AttemptID  string
-	TestID     string
-	UserID     uint64
-	QuestionID string
+	AttemptID    string
+	TestID       string
+	UserID       uint64
+	QuestionID   string
+	AssignmentID string
 )
 
 type AnswerKind int
@@ -106,6 +108,7 @@ func (a Answer) deepCopy() Answer {
 
 type Attempt struct {
 	id          AttemptID
+	assignment  AssignmentID
 	test        TestID
 	user        UserID
 	guestName   *string
@@ -125,9 +128,10 @@ type Attempt struct {
 	totalVisible int // total questions in the plan
 }
 
-func NewAttempt(id AttemptID, test TestID, user UserID, guestName *string, now time.Time, dur time.Duration, seed int64) *Attempt {
+func NewAttempt(id AttemptID, assignment AssignmentID, test TestID, user UserID, guestName *string, now time.Time, dur time.Duration, seed int64) *Attempt {
 	return &Attempt{
 		id:           id,
+		assignment:   assignment,
 		test:         test,
 		user:         user,
 		guestName:    guestName,
@@ -149,16 +153,17 @@ func (a *Attempt) InitializePlan(order []QuestionID) {
 	a.cursor = 0
 }
 
-func (a *Attempt) ID() AttemptID           { return a.id }
-func (a *Attempt) Test() TestID            { return a.test }
-func (a *Attempt) User() UserID            { return a.user }
-func (a *Attempt) GuestName() *string      { return a.guestName }
-func (a *Attempt) Status() AttemptStatus   { return a.status }
-func (a *Attempt) Version() int            { return a.version }
-func (a *Attempt) StartedAt() time.Time    { return a.startedAt }
-func (a *Attempt) SubmittedAt() *time.Time { return a.submittedAt }
-func (a *Attempt) ExpiredAt() *time.Time   { return a.expiredAt }
-func (a *Attempt) Duration() time.Duration { return a.duration }
+func (a *Attempt) ID() AttemptID            { return a.id }
+func (a *Attempt) Assignment() AssignmentID { return a.assignment }
+func (a *Attempt) Test() TestID             { return a.test }
+func (a *Attempt) User() UserID             { return a.user }
+func (a *Attempt) GuestName() *string       { return a.guestName }
+func (a *Attempt) Status() AttemptStatus    { return a.status }
+func (a *Attempt) Version() int             { return a.version }
+func (a *Attempt) StartedAt() time.Time     { return a.startedAt }
+func (a *Attempt) SubmittedAt() *time.Time  { return a.submittedAt }
+func (a *Attempt) ExpiredAt() *time.Time    { return a.expiredAt }
+func (a *Attempt) Duration() time.Duration  { return a.duration }
 func (a *Attempt) Deadline() (time.Time, bool) {
 	dl := a.deadline()
 	return dl, !dl.IsZero()

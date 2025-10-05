@@ -44,19 +44,37 @@ type TestReadModel interface {
 	ListQuestionsForScoring(ctx context.Context, testID string) ([]QuestionForScoring, error)
 }
 
+type AssignmentReadModel interface {
+	GetAssignment(ctx context.Context, id AssignmentID) (AssignmentDescriptor, error)
+}
+
+type AssignmentDescriptor struct {
+	ID      AssignmentID
+	TestID  TestID
+	OwnerID UserID
+	Title   string
+}
+
 type Service struct {
-	repo   Repository
-	tests  TestReadModel
-	tx     Transactor
-	clock  Clock
-	policy Policy
+	repo        Repository
+	tests       TestReadModel
+	assignments AssignmentReadModel
+	tx          Transactor
+	clock       Clock
+	policy      Policy
 }
 
-func NewTestAttemptService(repo Repository, tests TestReadModel, tx Transactor, clock Clock, policy Policy) *Service {
-	return &Service{repo: repo, tests: tests, tx: tx, clock: clock, policy: policy}
+func NewTestAttemptService(repo Repository, tests TestReadModel, assignments AssignmentReadModel, tx Transactor, clock Clock, policy Policy) *Service {
+	return &Service{repo: repo, tests: tests, assignments: assignments, tx: tx, clock: clock, policy: policy}
 }
 
-func (s *Service) StartAttempt(ctx context.Context, userID *UserID, guestName *string, testID TestID) (AttemptID, error) {
+func (s *Service) StartAttempt(ctx context.Context, userID *UserID, guestName *string, assignmentID AssignmentID) (AttemptID, error) {
+	assignment, err := s.assignments.GetAssignment(ctx, assignmentID)
+	if err != nil {
+		return "", err
+	}
+	testID := assignment.TestID
+
 	dur, from, until, allowGuests, err := s.tests.GetTestSettings(ctx, string(testID))
 	if err != nil {
 		return "", err
@@ -77,7 +95,7 @@ func (s *Service) StartAttempt(ctx context.Context, userID *UserID, guestName *s
 	}
 
 	if userID != nil {
-		if active, err := s.repo.GetActiveByUserAndTest(ctx, *userID, testID); err == nil && active != nil && active.ID() != "" {
+		if active, err := s.repo.GetActiveByUserAndAssignment(ctx, *userID, assignmentID); err == nil && active != nil && active.ID() != "" {
 			return active.ID(), nil
 		}
 	}
@@ -87,7 +105,7 @@ func (s *Service) StartAttempt(ctx context.Context, userID *UserID, guestName *s
 	if userID != nil {
 		uid = *userID
 	}
-	a := NewAttempt(NewAttemptID(), testID, uid, guestName, now, time.Duration(dur)*time.Second, seed)
+	a := NewAttempt(NewAttemptID(), assignmentID, testID, uid, guestName, now, time.Duration(dur)*time.Second, seed)
 
 	vis, err := s.tests.ListVisibleQuestions(ctx, string(testID))
 	if err != nil {
@@ -201,13 +219,14 @@ func (s *Service) Cancel(ctx context.Context, requester *UserID, id AttemptID, v
 }
 
 type AttemptView struct {
-	AttemptID   string `json:"attempt_id"`
-	Status      string `json:"status"`
-	Version     int    `json:"version"`
-	TimeLeftSec int64  `json:"time_left_sec"`
-	Total       int    `json:"total"`
-	Cursor      int    `json:"cursor"`
-	GuestName   string `json:"guest_name,omitempty"`
+	AttemptID    string `json:"attempt_id"`
+	AssignmentID string `json:"assignment_id"`
+	Status       string `json:"status"`
+	Version      int    `json:"version"`
+	TimeLeftSec  int64  `json:"time_left_sec"`
+	Total        int    `json:"total"`
+	Cursor       int    `json:"cursor"`
+	GuestName    string `json:"guest_name,omitempty"`
 }
 
 type QuestionView struct {
@@ -234,12 +253,13 @@ func attemptToView(a *Attempt, now time.Time) AttemptView {
 		left = int64(dl.Sub(now).Seconds())
 	}
 	av := AttemptView{
-		AttemptID:   string(a.ID()),
-		Status:      string(a.Status()),
-		Version:     a.Version(),
-		TimeLeftSec: left,
-		Total:       a.Total(),
-		Cursor:      a.Cursor(),
+		AttemptID:    string(a.ID()),
+		AssignmentID: string(a.Assignment()),
+		Status:       string(a.Status()),
+		Version:      a.Version(),
+		TimeLeftSec:  left,
+		Total:        a.Total(),
+		Cursor:       a.Cursor(),
 	}
 	if a.GuestName() != nil {
 		av.GuestName = *a.GuestName()

@@ -4,25 +4,52 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import TestAttemptPage from '@/components/TestAttempt/TestAttemptPage';
 import { useI18n } from '@/contexts/LanguageContext';
+import { AssignmentService } from '@/services/assignment';
+import type { AssignmentView } from '@/types/assignment';
 
 export default function TakeTestPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useI18n();
 
-  const testId = searchParams.get('testId');
+  const assignmentId = searchParams.get('assignmentId');
 
   const [guestName, setGuestName] = useState('');
   const [isGuest, setIsGuest] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [shareLink, setShareLink] = useState('');
+  const [assignment, setAssignment] = useState<AssignmentView | null>(null);
   const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle');
 
   useEffect(() => {
-    if (testId && typeof window !== 'undefined') {
-      setShareLink(`${window.location.origin}/take-test?testId=${testId}`);
+    if (!assignmentId) {
+      setAssignment(null);
+      return;
     }
-  }, [testId]);
+
+    let isMounted = true;
+    const load = async () => {
+      try {
+        const data = await AssignmentService.getAssignment(assignmentId);
+        if (!isMounted) return;
+        setAssignment(data);
+        if (typeof window !== 'undefined') {
+          setShareLink(`${window.location.origin}/take-test?assignmentId=${assignmentId}`);
+        }
+      } catch (error) {
+        console.error('Failed to fetch assignment', error);
+        if (isMounted) {
+          setAssignment(null);
+        }
+      }
+    };
+
+    void load();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [assignmentId]);
 
   useEffect(() => {
     if (copyState === 'copied') {
@@ -38,7 +65,7 @@ export default function TakeTestPage() {
     [isGuest, t]
   );
 
-  if (!testId) {
+  if (!assignmentId) {
     return (
       <section className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-slate-100">
         <div className="mx-auto flex min-h-screen max-w-3xl flex-col items-center justify-center px-6 py-12 text-center">
@@ -183,5 +210,5 @@ export default function TakeTestPage() {
     );
   }
 
-  return <TestAttemptPage testId={testId} guestName={isGuest ? guestName : undefined} />;
+  return <TestAttemptPage assignmentId={assignmentId} guestName={isGuest ? guestName : undefined} />;
 }

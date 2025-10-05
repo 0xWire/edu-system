@@ -6,10 +6,10 @@ import (
 	"errors"
 	"time"
 
+	domain "edu-system/internal/testAttempt"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-
-	domain "edu-system/internal/testAttempt"
 )
 
 type Repo struct {
@@ -41,11 +41,11 @@ func (r *Repo) GetByID(ctx context.Context, id domain.AttemptID) (*domain.Attemp
 	return toDomain(&row)
 }
 
-func (r *Repo) GetActiveByUserAndTest(ctx context.Context, user domain.UserID, test domain.TestID) (*domain.Attempt, error) {
+func (r *Repo) GetActiveByUserAndAssignment(ctx context.Context, user domain.UserID, assignment domain.AssignmentID) (*domain.Attempt, error) {
 	var row attemptRow
 	err := r.db.WithContext(ctx).
 		Preload("Answers").
-		Where("user_id = ? AND test_id = ? AND status = ?", uint64(user), string(test), string(domain.StatusActive)).
+		Where("user_id = ? AND assignment_id = ? AND status = ?", uint64(user), string(assignment), string(domain.StatusActive)).
 		First(&row).Error
 	if err != nil {
 		return nil, translateErr(err)
@@ -68,6 +68,7 @@ func (r *Repo) SaveAnswer(ctx context.Context, a *domain.Attempt, answered domai
 	if ar.AttemptID == "" {
 		return errors.New("answer row not prepared")
 	}
+	ar.ID = uuid.NewString()
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Model(&attemptRow{}).
 			Where("id = ?", row.ID).
@@ -131,21 +132,22 @@ func (r *Repo) Cancel(ctx context.Context, a *domain.Attempt) error {
 }
 
 type attemptRow struct {
-	ID          string `gorm:"primaryKey;type:varchar(36)"`
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	TestID      string    `gorm:"not null;type:varchar(36);index"`
-	UserID      uint64    `gorm:"not null;index"` // 0 = guest
-	GuestName   *string   `gorm:"type:varchar(64);null"`
-	StartedAt   time.Time `gorm:"not null;index"`
-	SubmittedAt *time.Time
-	ExpiredAt   *time.Time
-	Status      string  `gorm:"type:varchar(16);not null;default:'active';index"`
-	DurationSec int     `gorm:"not null;default:0"`
-	Version     int     `gorm:"not null;default:0;version"`
-	Seed        int64   `gorm:"not null;default:0"`
-	Score       float64 `gorm:"not null;default:0"`
-	MaxScore    float64 `gorm:"not null;default:0"`
+	ID           string `gorm:"primaryKey;type:varchar(36)"`
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	AssignmentID string    `gorm:"not null;type:varchar(36);index"`
+	TestID       string    `gorm:"not null;type:varchar(36);index"`
+	UserID       uint64    `gorm:"not null;index"` // 0 = guest
+	GuestName    *string   `gorm:"type:varchar(64);null"`
+	StartedAt    time.Time `gorm:"not null;index"`
+	SubmittedAt  *time.Time
+	ExpiredAt    *time.Time
+	Status       string  `gorm:"type:varchar(16);not null;default:'active';index"`
+	DurationSec  int     `gorm:"not null;default:0"`
+	Version      int     `gorm:"not null;default:0;version"`
+	Seed         int64   `gorm:"not null;default:0"`
+	Score        float64 `gorm:"not null;default:0"`
+	MaxScore     float64 `gorm:"not null;default:0"`
 
 	OrderJSON json.RawMessage `gorm:"type:json;not null"`
 	Cursor    int             `gorm:"not null;default:0"`
@@ -209,19 +211,20 @@ func toRow(a *domain.Attempt) (*attemptRow, error) {
 	}
 
 	return &attemptRow{
-		ID:          string(a.ID()),
-		TestID:      string(a.Test()),
-		UserID:      uint64(a.User()),
-		GuestName:   gname,
-		StartedAt:   a.StartedAt(),
-		SubmittedAt: submitted,
-		ExpiredAt:   expired,
-		Status:      string(a.Status()),
-		DurationSec: int(a.Duration() / time.Second),
-		Version:     a.Version(),
-		Seed:        a.Seed(),
-		Score:       score,
-		MaxScore:    max,
+		ID:           string(a.ID()),
+		AssignmentID: string(a.Assignment()),
+		TestID:       string(a.Test()),
+		UserID:       uint64(a.User()),
+		GuestName:    gname,
+		StartedAt:    a.StartedAt(),
+		SubmittedAt:  submitted,
+		ExpiredAt:    expired,
+		Status:       string(a.Status()),
+		DurationSec:  int(a.Duration() / time.Second),
+		Version:      a.Version(),
+		Seed:         a.Seed(),
+		Score:        score,
+		MaxScore:     max,
 
 		OrderJSON: orderJSON,
 		Cursor:    a.Cursor(),
@@ -256,6 +259,7 @@ func toDomain(r *attemptRow) (*domain.Attempt, error) {
 
 	attempt, err := domain.RehydrateAttempt(
 		domain.AttemptID(r.ID),
+		domain.AssignmentID(r.AssignmentID),
 		domain.TestID(r.TestID),
 		domain.UserID(r.UserID),
 		r.GuestName,

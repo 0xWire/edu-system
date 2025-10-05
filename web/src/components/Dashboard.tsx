@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useI18n } from '@/contexts/LanguageContext';
 import { TestService } from '@/services/test';
+import { AssignmentService } from '@/services/assignment';
 import type { GetTestResponse } from '@/types/test';
 import CreateTestForm from './CreateTestForm';
 
@@ -27,7 +28,7 @@ export default function Dashboard() {
   const fetchTests = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await TestService.getAllTests();
+      const data = await TestService.getMyTests();
       setTests(data);
       setHasConnectionError(false);
     } catch (err) {
@@ -89,8 +90,13 @@ export default function Dashboard() {
     window.location.href = '/login';
   };
 
-  const handleStartTest = (testId: string) => {
-    router.push(`/take-test?testId=${testId}`);
+  const handleStartTest = async (testId: string) => {
+    try {
+      const assignment = await AssignmentService.createAssignment({ test_id: testId });
+      router.push(assignment.share_url);
+    } catch (error) {
+      console.error('Failed to start assignment', error);
+    }
   };
 
   const displayName = useMemo(() => {

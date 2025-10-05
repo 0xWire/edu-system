@@ -8,6 +8,7 @@ import (
 
 func RehydrateAttempt(
 	id AttemptID,
+	assignment AssignmentID,
 	test TestID,
 	user UserID,
 	guestName *string,
@@ -41,6 +42,7 @@ func RehydrateAttempt(
 
 	a := &Attempt{
 		id:           id,
+		assignment:   assignment,
 		test:         test,
 		user:         user,
 		startedAt:    startedAt.UTC(),

@@ -5,10 +5,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"edu-system/internal/assignment"
 	"edu-system/internal/auth"
 	"edu-system/internal/delivery"
 	"edu-system/internal/delivery/middleware"
 	"edu-system/internal/platform"
+	"edu-system/internal/platform/assignmentrepo"
 	"edu-system/internal/platform/authrepo"
 	"edu-system/internal/platform/testattemptrepo"
 	"edu-system/internal/platform/testrepo"
@@ -24,13 +26,16 @@ func main() {
 	userRepo := authrepo.NewUserRepository(db)
 	testRepo := testrepo.NewTestRepository(db)
 	testAttemptRepo := testattemptrepo.NewTestAttemptRepository(db)
+	assignmentRepo := assignmentrepo.NewRepository(db)
 
 	// Initialize services
 	authService := auth.NewAuthService(userRepo, cfg.JWTSecret)
 	testService := test.NewTestService(testRepo)
+	assignmentService := assignment.NewService(assignmentRepo, testRepo)
 	testAttemptService := testAttempt.NewTestAttemptService(
 		testAttemptRepo,
 		testRepo,
+		assignment.NewReadModel(assignmentService),
 		platform.GormTransactor{DB: db},
 		platform.SystemClock{},
 		platform.AllowGuestsAndOwnerPolicy{Tests: testRepo},
@@ -40,6 +45,7 @@ func main() {
 	authHandler := auth.NewAuthHandler(authService)
 	testHandler := test.NewTestHandler(testService)
 	testAttemptHandler := testAttempt.NewHandlers(testAttemptService)
+	assignmentHandler := assignment.NewHandlers(assignmentService)
 
 	// Set gin mode
 	gin.SetMode(cfg.GinMode)
@@ -61,6 +67,7 @@ func main() {
 	server.SetupRoutes(
 		func(v1 gin.IRouter) { auth.RegisterRoutes(v1, authHandler, jwtMW) },
 		func(v1 gin.IRouter) { test.RegisterRoutes(v1, testHandler, jwtMW) },
+		func(v1 gin.IRouter) { assignment.RegisterRoutes(v1, assignmentHandler, jwtMW) },
 		func(v1 gin.IRouter) { testAttempt.RegisterRoutes(v1, testAttemptHandler, optionalJWTMW) },
 	)
 

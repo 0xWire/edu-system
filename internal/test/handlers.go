@@ -1,10 +1,12 @@
 package test
 
 import (
+	"net/http"
+	"strconv"
+
 	"edu-system/internal/delivery"
 	"edu-system/internal/test/dto"
 	"github.com/gin-gonic/gin"
-	"net/http"
 )
 
 type TestHandler struct {
@@ -27,7 +29,15 @@ func (h *TestHandler) CreateTest(c *gin.Context) {
 		return
 	}
 
-	if err := h.testService.CreateTest(&req); err != nil {
+	uid, ok := userIDFromCtx(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, response.ErrorResponse{
+			Error: "unauthorized",
+		})
+		return
+	}
+
+	if err := h.testService.CreateTest(uint(uid), &req); err != nil {
 		c.JSON(http.StatusInternalServerError, response.ErrorResponse{
 			Error:   "test creation failed",
 			Message: err.Error(),
@@ -50,20 +60,38 @@ func (h *TestHandler) GetTest(c *gin.Context) {
 		return
 	}
 
-	test, err := h.testService.GetTest(testID)
+	uid, ok := userIDFromCtx(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	testData, err := h.testService.GetTest(uint(uid), testID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{
+		status := http.StatusInternalServerError
+		errMsg := err.Error()
+		if err == ErrForbidden {
+			status = http.StatusForbidden
+			errMsg = "not allowed"
+		}
+		c.JSON(status, response.ErrorResponse{
 			Error:   "test retrieval failed",
-			Message: err.Error(),
+			Message: errMsg,
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, test)
+	c.JSON(http.StatusOK, testData)
 }
 
 func (h *TestHandler) GetAllTests(c *gin.Context) {
-	tests, err := h.testService.GetAllTests()
+	uid, ok := userIDFromCtx(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	tests, err := h.testService.ListTests(uint(uid))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, response.ErrorResponse{
 			Error:   "failed to retrieve tests",
@@ -96,10 +124,22 @@ func (h *TestHandler) UpdateTest(c *gin.Context) {
 
 	req.TestID = testID
 
-	if err := h.testService.UpdateTest(testID, &req); err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{
+	uid, ok := userIDFromCtx(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	if err := h.testService.UpdateTest(uint(uid), testID, &req); err != nil {
+		status := http.StatusInternalServerError
+		msg := err.Error()
+		if err == ErrForbidden {
+			status = http.StatusForbidden
+			msg = "not allowed"
+		}
+		c.JSON(status, response.ErrorResponse{
 			Error:   "test update failed",
-			Message: err.Error(),
+			Message: msg,
 		})
 		return
 	}
@@ -119,10 +159,22 @@ func (h *TestHandler) DeleteTest(c *gin.Context) {
 		return
 	}
 
-	if err := h.testService.DeleteTest(testID); err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{
+	uid, ok := userIDFromCtx(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	if err := h.testService.DeleteTest(uint(uid), testID); err != nil {
+		status := http.StatusInternalServerError
+		msg := err.Error()
+		if err == ErrForbidden {
+			status = http.StatusForbidden
+			msg = "not allowed"
+		}
+		c.JSON(status, response.ErrorResponse{
 			Error:   "test deletion failed",
-			Message: err.Error(),
+			Message: msg,
 		})
 		return
 	}
@@ -130,4 +182,26 @@ func (h *TestHandler) DeleteTest(c *gin.Context) {
 	c.JSON(http.StatusOK, response.SuccessResponse{
 		Message: "test deleted successfully",
 	})
+}
+
+func userIDFromCtx(c *gin.Context) (uint64, bool) {
+	val, ok := c.Get("user_id")
+	if !ok {
+		return 0, false
+	}
+	switch v := val.(type) {
+	case uint64:
+		return v, true
+	case uint:
+		return uint64(v), true
+	case int:
+		return uint64(v), true
+	case float64:
+		return uint64(v), true
+	case string:
+		if parsed, err := strconv.ParseUint(v, 10, 64); err == nil {
+			return parsed, true
+		}
+	}
+	return 0, false
 }

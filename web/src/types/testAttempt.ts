@@ -1,5 +1,6 @@
 export interface AttemptView {
   attempt_id: string;
+  assignment_id: string;
   status: string;
   version: number;
   time_left_sec: number;
@@ -28,7 +29,7 @@ export interface AnsweredView {
 }
 
 export interface StartAttemptRequest {
-  test_id: string;
+  assignment_id: string;
   guest_name?: string;
 }
 
@@ -45,7 +46,7 @@ export interface AnswerPayload {
 
 export interface SubmitAnswerRequest {
   version: number;
-  answer: AnswerPayload;
+  payload: AnswerPayload;
 }
 
 export interface SubmitAttemptRequest {
