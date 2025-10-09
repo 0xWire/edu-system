@@ -42,7 +42,6 @@ export interface AnswerFormData {
 export interface CreateTestResponse {
   success: boolean;
   error?: string;
-  test?: Test;
 }
 
 export interface GetTestResponse {

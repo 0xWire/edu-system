@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { TestService } from '@/services/test';
-import { GetTestResponse } from '@/types/test';
+import { AssignmentService } from '@/services/assignment';
+import type { GetTestResponse } from '@/types/test';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface TestListProps {
@@ -18,6 +19,8 @@ export default function TestList({ onEdit, onView, showActions = true, myTestsOn
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [generatedLinks, setGeneratedLinks] = useState<Record<string, string>>({});
 
   useEffect(() => {
     loadTests();
@@ -28,17 +31,11 @@ export default function TestList({ onEdit, onView, showActions = true, myTestsOn
     setError(null);
 
     try {
-      const response = myTestsOnly 
-        ? await TestService.getMyTests()
-        : await TestService.getAllTests();
-
-      if (response.success && response.data) {
-        setTests(response.data);
-      } else {
-        setError(response.error || 'Failed to load tests');
-      }
+      const data = await TestService.getMyTests();
+      setTests(data);
     } catch (err) {
-      setError('An unexpected error occurred');
+      console.error(err);
+      setError('Failed to load tests');
     } finally {
       setLoading(false);
     }
@@ -51,17 +48,35 @@ export default function TestList({ onEdit, onView, showActions = true, myTestsOn
 
     setDeletingId(testId);
     try {
-      const response = await TestService.deleteTest(testId);
-      
-      if (response.success) {
+      const success = await TestService.deleteTest(testId);
+      if (success) {
         setTests(prev => prev.filter(test => test.test_id !== testId));
       } else {
-        setError(response.error || 'Failed to delete test');
+        setError('Failed to delete test');
       }
     } catch (err) {
       setError('An unexpected error occurred');
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleGenerateLink = async (test: GetTestResponse) => {
+    setGeneratingId(test.test_id);
+    try {
+      const assignment = await AssignmentService.createAssignment({ test_id: test.test_id, title: test.title });
+      const absoluteLink = typeof window !== 'undefined'
+        ? `${window.location.origin}${assignment.share_url}`
+        : assignment.share_url;
+      setGeneratedLinks((prev) => ({ ...prev, [test.test_id]: absoluteLink }));
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(absoluteLink);
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Failed to generate link');
+    } finally {
+      setGeneratingId(null);
     }
   };
 
@@ -147,6 +162,13 @@ export default function TestList({ onEdit, onView, showActions = true, myTestsOn
                 {isOwner(test) && (
                   <>
                     <button
+                      onClick={() => handleGenerateLink(test)}
+                      disabled={generatingId === test.test_id}
+                      className="px-3 py-1 text-sm text-emerald-600 border border-emerald-300 rounded-md hover:bg-emerald-50 disabled:opacity-50"
+                    >
+                      {generatingId === test.test_id ? 'Generating...' : 'Generate Link'}
+                    </button>
+                    <button
                       onClick={() => onEdit?.(test)}
                       className="px-3 py-1 text-sm text-blue-600 border border-blue-300 rounded-md hover:bg-blue-50"
                     >
@@ -164,6 +186,12 @@ export default function TestList({ onEdit, onView, showActions = true, myTestsOn
               </div>
             )}
           </div>
+
+          {generatedLinks[test.test_id] && (
+            <div className="mt-3 rounded-md bg-emerald-50 p-3 text-sm text-emerald-700">
+              Share link copied! {generatedLinks[test.test_id]}
+            </div>
+          )}
         </div>
       ))}
     </div>

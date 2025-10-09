@@ -1,13 +1,16 @@
 package platform
 
 import (
-	"edu-system/internal/auth"
-	"edu-system/internal/test"
 	"log"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+
+	"edu-system/internal/auth"
+	"edu-system/internal/platform/assignmentrepo"
+	"edu-system/internal/platform/testattemptrepo"
+	"edu-system/internal/test"
 )
 
 func InitDB(dbPath string) *gorm.DB {
@@ -25,6 +28,14 @@ func InitDB(dbPath string) *gorm.DB {
 		&test.Option{},
 	); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
+	}
+
+	if err := testattemptrepo.Migrate(db); err != nil {
+		log.Fatalf("Failed to migrate test attempt tables: %v", err)
+	}
+
+	if err := assignmentrepo.Migrate(db); err != nil {
+		log.Fatalf("Failed to migrate assignment tables: %v", err)
 	}
 
 	log.Println("Database initialized successfully")

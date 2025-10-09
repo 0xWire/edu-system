@@ -1,60 +1,44 @@
 import api from '@/lib/api';
-import { GetTestResponse, CreateTestRequest, CreateTestResponse } from '@/types/test';
+import type { GetTestResponse, CreateTestRequest, CreateTestResponse } from '@/types/test';
 
 export class TestService {
-  // Get all tests
-  static async getAllTests(): Promise<GetTestResponse[]> {
-    try {
-      const response = await api.get('/api/v1/tests');
-      return response.data;
-    } catch (error) {
-      console.error('Failed to fetch tests:', error);
-      throw error;
-    }
+  static async getMyTests(): Promise<GetTestResponse[]> {
+    const response = await api.get('/api/v1/tests');
+    return response.data;
   }
 
-  // Get a specific test by ID
   static async getTest(id: string): Promise<GetTestResponse> {
-    try {
-      const response = await api.get(`/api/v1/tests/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to fetch test:', error);
-      throw error;
-    }
+    const response = await api.get(`/api/v1/tests/${id}`);
+    return response.data;
   }
 
-  // Create a new test
   static async createTest(testData: CreateTestRequest): Promise<CreateTestResponse> {
     try {
-      const response = await api.post('/api/v1/tests/', testData);
-      return {
-        success: true,
-        test: response.data
-      };
+      await api.post('/api/v1/tests', testData);
+      return { success: true };
     } catch (error) {
       console.error('Failed to create test:', error);
-      throw error;
+      return { success: false, error: 'Failed to create test' };
     }
   }
 
-  // Update a test
-  static async updateTest(id: string, testData: Partial<CreateTestRequest>): Promise<void> {
+  static async updateTest(id: string, testData: Partial<CreateTestRequest>): Promise<boolean> {
     try {
       await api.put(`/api/v1/tests/${id}`, testData);
+      return true;
     } catch (error) {
       console.error('Failed to update test:', error);
-      throw error;
+      return false;
     }
   }
 
-  // Delete a test
-  static async deleteTest(id: string): Promise<void> {
+  static async deleteTest(id: string): Promise<boolean> {
     try {
       await api.delete(`/api/v1/tests/${id}`);
+      return true;
     } catch (error) {
       console.error('Failed to delete test:', error);
-      throw error;
+      return false;
     }
   }
 }
