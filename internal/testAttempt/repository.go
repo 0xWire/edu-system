@@ -11,4 +11,6 @@ type Repository interface {
 	SaveProgress(ctx context.Context, a *Attempt) error
 	Submit(ctx context.Context, a *Attempt) error
 	Cancel(ctx context.Context, a *Attempt) error
+
+	ListSummariesByAssignments(ctx context.Context, assignments []AssignmentID) ([]AttemptSummary, error)
 }

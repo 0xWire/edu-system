@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -49,13 +50,14 @@ func (h *Handlers) Start(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, dto.AttemptView{
-		AttemptID:   av.AttemptID,
-		Status:      av.Status,
-		Version:     av.Version,
-		TimeLeftSec: av.TimeLeftSec,
-		Total:       av.Total,
-		Cursor:      av.Cursor,
-		GuestName:   av.GuestName,
+		AttemptID:    av.AttemptID,
+		AssignmentID: av.AssignmentID,
+		Status:       av.Status,
+		Version:      av.Version,
+		TimeLeftSec:  av.TimeLeftSec,
+		Total:        av.Total,
+		Cursor:       av.Cursor,
+		GuestName:    av.GuestName,
 	})
 }
 
@@ -78,13 +80,14 @@ func (h *Handlers) NextQuestion(c *gin.Context) {
 	}
 	resp := dto.NextQuestionResponse{
 		Attempt: dto.AttemptView{
-			AttemptID:   av.AttemptID,
-			Status:      av.Status,
-			Version:     av.Version,
-			TimeLeftSec: av.TimeLeftSec,
-			Total:       av.Total,
-			Cursor:      av.Cursor,
-			GuestName:   av.GuestName,
+			AttemptID:    av.AttemptID,
+			AssignmentID: av.AssignmentID,
+			Status:       av.Status,
+			Version:      av.Version,
+			TimeLeftSec:  av.TimeLeftSec,
+			Total:        av.Total,
+			Cursor:       av.Cursor,
+			GuestName:    av.GuestName,
 		},
 		Question: dto.QuestionView{
 			ID:           qv.ID,
@@ -132,13 +135,14 @@ func (h *Handlers) Answer(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, dto.AnswerResponse{
 		Attempt: dto.AttemptView{
-			AttemptID:   av.AttemptID,
-			Status:      av.Status,
-			Version:     av.Version,
-			TimeLeftSec: av.TimeLeftSec,
-			Total:       av.Total,
-			Cursor:      av.Cursor,
-			GuestName:   av.GuestName,
+			AttemptID:    av.AttemptID,
+			AssignmentID: av.AssignmentID,
+			Status:       av.Status,
+			Version:      av.Version,
+			TimeLeftSec:  av.TimeLeftSec,
+			Total:        av.Total,
+			Cursor:       av.Cursor,
+			GuestName:    av.GuestName,
 		},
 		QuestionID: answered.QuestionID,
 	})
@@ -171,13 +175,14 @@ func (h *Handlers) Submit(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, dto.SubmitResponse{Attempt: dto.AttemptView{
-		AttemptID:   av.AttemptID,
-		Status:      av.Status,
-		Version:     av.Version,
-		TimeLeftSec: av.TimeLeftSec,
-		Total:       av.Total,
-		Cursor:      av.Cursor,
-		GuestName:   av.GuestName,
+		AttemptID:    av.AttemptID,
+		AssignmentID: av.AssignmentID,
+		Status:       av.Status,
+		Version:      av.Version,
+		TimeLeftSec:  av.TimeLeftSec,
+		Total:        av.Total,
+		Cursor:       av.Cursor,
+		GuestName:    av.GuestName,
 	}})
 }
 
@@ -208,14 +213,70 @@ func (h *Handlers) Cancel(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, dto.SubmitResponse{Attempt: dto.AttemptView{
-		AttemptID:   av.AttemptID,
-		Status:      av.Status,
-		Version:     av.Version,
-		TimeLeftSec: av.TimeLeftSec,
-		Total:       av.Total,
-		Cursor:      av.Cursor,
-		GuestName:   av.GuestName,
+		AttemptID:    av.AttemptID,
+		AssignmentID: av.AssignmentID,
+		Status:       av.Status,
+		Version:      av.Version,
+		TimeLeftSec:  av.TimeLeftSec,
+		Total:        av.Total,
+		Cursor:       av.Cursor,
+		GuestName:    av.GuestName,
 	}})
+}
+
+// GET /v1/attempts?assignment_id=
+func (h *Handlers) ListByAssignment(c *gin.Context) {
+	assignmentID := c.Query("assignment_id")
+	if assignmentID == "" {
+		c.JSON(http.StatusBadRequest, errJSON("missing_assignment_id", "assignment_id query parameter is required"))
+		return
+	}
+	ownerID, ok := userIDFromCtx(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, errJSON("unauthorized", "authentication required"))
+		return
+	}
+	attempts, err := h.svc.ListAssignmentAttempts(c, UserID(ownerID), AssignmentID(assignmentID))
+	if err != nil {
+		writeDomainErr(c, err)
+		return
+	}
+	resp := dto.AttemptSummaryResponse{Attempts: make([]dto.AttemptSummaryView, 0, len(attempts))}
+	for _, a := range attempts {
+		participant := dto.ParticipantView{}
+		if a.User != nil {
+			participant.Kind = "user"
+			uid := uint64(a.User.ID)
+			participant.UserID = &uid
+			participant.Name = a.User.FullName()
+		} else if a.UserID != 0 {
+			participant.Kind = "user"
+			uid := uint64(a.UserID)
+			participant.UserID = &uid
+			participant.Name = fmt.Sprintf("User #%d", uid)
+		} else {
+			participant.Kind = "guest"
+			if a.GuestName != nil && *a.GuestName != "" {
+				participant.Name = *a.GuestName
+			} else {
+				participant.Name = "Guest"
+			}
+		}
+		resp.Attempts = append(resp.Attempts, dto.AttemptSummaryView{
+			AttemptID:    string(a.AttemptID),
+			AssignmentID: string(a.AssignmentID),
+			TestID:       string(a.TestID),
+			Status:       string(a.Status),
+			StartedAt:    a.StartedAt,
+			SubmittedAt:  a.SubmittedAt,
+			ExpiredAt:    a.ExpiredAt,
+			DurationSec:  int(a.Duration / time.Second),
+			Score:        a.Score,
+			MaxScore:     a.MaxScore,
+			Participant:  participant,
+		})
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 // Helpers.

@@ -84,11 +84,45 @@
       "unknownAuthor": "Not specified",
       "ready": "Ready to launch"
     },
+    "assignments": {
+      "title": "Test attempts",
+      "subtitle": "Generated links and learner results appear here.",
+      "emptyTitle": "No attempts yet",
+      "emptySubtitle": "Generate a link from the library to start tracking test attempts.",
+      "errorTitle": "Could not load attempts",
+      "errorDescription": "Please refresh the list or try again a bit later.",
+      "cardTag": "attempt",
+      "untitled": "Untitled assignment",
+      "shareLabel": "Share link",
+      "noAttempts": "No attempts recorded yet",
+      "columns": {
+        "participant": "Participant",
+        "score": "Score",
+        "status": "Status",
+        "started": "Started",
+        "completed": "Completed"
+      },
+      "labels": {
+        "guest": "Guest",
+        "registered": "Registered user"
+      },
+      "status": {
+        "active": "In progress",
+        "submitted": "Submitted",
+        "expired": "Expired",
+        "canceled": "Cancelled"
+      }
+    },
     "modal": {
       "tag": "New test",
       "title": "Create a test",
       "close": "Close"
     }
+  },
+  "createTest": {
+    "tag": "test builder",
+    "title": "Create a new test",
+    "subtitle": "Craft questions, answers and supporting images. Once saved you will return to the dashboard."
   },
   "takeTest": {
     "invitationGuest": "Guest mode is perfect for open attempts without sign-in — just add a name so we know who is taking the test.",

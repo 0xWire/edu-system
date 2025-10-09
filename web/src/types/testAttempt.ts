@@ -56,3 +56,23 @@ export interface SubmitAttemptRequest {
 export interface CancelAttemptRequest {
   version: number;
 }
+
+export interface AttemptSummary {
+  attempt_id: string;
+  assignment_id: string;
+  test_id: string;
+  status: string;
+  started_at: string;
+  submitted_at?: string;
+  expired_at?: string;
+  duration_sec: number;
+  score: number;
+  max_score: number;
+  participant: AttemptParticipant;
+}
+
+export interface AttemptParticipant {
+  kind: 'user' | 'guest';
+  name: string;
+  user_id?: number;
+}

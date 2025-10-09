@@ -39,6 +39,7 @@ func main() {
 		platform.GormTransactor{DB: db},
 		platform.SystemClock{},
 		platform.AllowGuestsAndOwnerPolicy{Tests: testRepo},
+		platform.GormUserDirectory{DB: db},
 	)
 
 	// Initialize handlers
@@ -68,7 +69,7 @@ func main() {
 		func(v1 gin.IRouter) { auth.RegisterRoutes(v1, authHandler, jwtMW) },
 		func(v1 gin.IRouter) { test.RegisterRoutes(v1, testHandler, jwtMW) },
 		func(v1 gin.IRouter) { assignment.RegisterRoutes(v1, assignmentHandler, jwtMW) },
-		func(v1 gin.IRouter) { testAttempt.RegisterRoutes(v1, testAttemptHandler, optionalJWTMW) },
+		func(v1 gin.IRouter) { testAttempt.RegisterRoutes(v1, testAttemptHandler, optionalJWTMW, jwtMW) },
 	)
 
 	// Start server
