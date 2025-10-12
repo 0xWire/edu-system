@@ -60,17 +60,22 @@ type UserDirectory interface {
 }
 
 type Service struct {
-	repo        Repository
-	tests       TestReadModel
-	assignments AssignmentReadModel
-	tx          Transactor
-	clock       Clock
-	policy      Policy
-	users       UserDirectory
+	repo          Repository
+	tests         TestReadModel
+	assignments   AssignmentReadModel
+	tx            Transactor
+	clock         Clock
+	policy        Policy
+	users         UserDirectory
+	attemptPolicy AttemptPolicy
 }
 
-func NewTestAttemptService(repo Repository, tests TestReadModel, assignments AssignmentReadModel, tx Transactor, clock Clock, policy Policy, users UserDirectory) *Service {
-	return &Service{repo: repo, tests: tests, assignments: assignments, tx: tx, clock: clock, policy: policy, users: users}
+func NewTestAttemptService(repo Repository, tests TestReadModel, assignments AssignmentReadModel, tx Transactor, clock Clock, policy Policy, users UserDirectory, attemptPolicy AttemptPolicy) *Service {
+	if attemptPolicy == (AttemptPolicy{}) {
+		attemptPolicy.ShuffleQuestions = true
+		attemptPolicy.ShuffleAnswers = true
+	}
+	return &Service{repo: repo, tests: tests, assignments: assignments, tx: tx, clock: clock, policy: policy, users: users, attemptPolicy: attemptPolicy}
 }
 
 func (s *Service) StartAttempt(ctx context.Context, userID *UserID, guestName *string, assignmentID AssignmentID) (AttemptID, error) {
@@ -110,13 +115,30 @@ func (s *Service) StartAttempt(ctx context.Context, userID *UserID, guestName *s
 	if userID != nil {
 		uid = *userID
 	}
-	a := NewAttempt(NewAttemptID(), assignmentID, testID, uid, guestName, now, time.Duration(dur)*time.Second, seed)
-
+	policy := s.attemptPolicy
+	if dur > 0 {
+		policy.MaxAttemptTime = time.Duration(dur) * time.Second
+	}
 	vis, err := s.tests.ListVisibleQuestions(ctx, string(testID))
 	if err != nil {
 		return "", err
 	}
-	order := shuffleQuestionIDs(vis, seed)
+
+	var order []QuestionID
+	if policy.ShuffleQuestions {
+		order = shuffleQuestionIDs(vis, seed)
+	} else {
+		order = make([]QuestionID, 0, len(vis))
+		for _, q := range vis {
+			order = append(order, QuestionID(q.ID))
+		}
+	}
+	if policy.MaxQuestions > 0 && len(order) > policy.MaxQuestions {
+		order = order[:policy.MaxQuestions]
+	}
+
+	a := NewAttempt(NewAttemptID(), assignmentID, testID, uid, guestName, now, policy, seed)
+
 	a.InitializePlan(order)
 
 	return s.repo.Create(ctx, a)
@@ -148,7 +170,10 @@ func (s *Service) NextQuestion(ctx context.Context, requester *UserID, id Attemp
 	if !ok {
 		return AttemptView{}, QuestionView{}, errors.New("question not found in test")
 	}
-	options := shuffleOptions(vq.Options, a.Seed(), a.Cursor())
+	options := vq.Options
+	if a.Policy().ShuffleAnswers {
+		options = shuffleOptions(vq.Options, a.Seed(), a.Cursor())
+	}
 
 	return attemptToView(a, s.clock.Now()), makeQuestionView(vq, options), nil
 }

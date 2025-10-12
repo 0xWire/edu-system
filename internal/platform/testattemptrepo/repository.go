@@ -184,8 +184,9 @@ type attemptRow struct {
 	Score        float64 `gorm:"not null;default:0"`
 	MaxScore     float64 `gorm:"not null;default:0"`
 
-	OrderJSON json.RawMessage `gorm:"type:json;not null"`
-	Cursor    int             `gorm:"not null;default:0"`
+	PolicyJSON json.RawMessage `gorm:"type:json;not null;default:'{}'"`
+	OrderJSON  json.RawMessage `gorm:"type:json;not null"`
+	Cursor     int             `gorm:"not null;default:0"`
 
 	Answers []answerRow `gorm:"foreignKey:AttemptID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }
@@ -207,6 +208,12 @@ func (answerRow) TableName() string { return "selected_answers" }
 
 func toRow(a *domain.Attempt) (*attemptRow, error) {
 	score, max := a.Score()
+
+	policy := a.Policy()
+	policyJSON, err := json.Marshal(policy)
+	if err != nil {
+		return nil, err
+	}
 
 	order := aOrder(a)
 	orderJSON, err := json.Marshal(order)
@@ -261,13 +268,28 @@ func toRow(a *domain.Attempt) (*attemptRow, error) {
 		Score:        score,
 		MaxScore:     max,
 
-		OrderJSON: orderJSON,
-		Cursor:    a.Cursor(),
-		Answers:   arows,
+		PolicyJSON: policyJSON,
+		OrderJSON:  orderJSON,
+		Cursor:     a.Cursor(),
+		Answers:    arows,
 	}, nil
 }
 
 func toDomain(r *attemptRow) (*domain.Attempt, error) {
+	var policy domain.AttemptPolicy
+	if len(r.PolicyJSON) > 0 {
+		if err := json.Unmarshal(r.PolicyJSON, &policy); err != nil {
+			return nil, err
+		}
+	}
+	if len(r.PolicyJSON) == 0 || string(r.PolicyJSON) == "{}" {
+		policy.ShuffleQuestions = true
+		policy.ShuffleAnswers = true
+	}
+	if policy.MaxAttemptTime == 0 && r.DurationSec > 0 {
+		policy.MaxAttemptTime = time.Duration(r.DurationSec) * time.Second
+	}
+
 	var ids []string
 	if err := json.Unmarshal(r.OrderJSON, &ids); err != nil {
 		return nil, err
@@ -299,7 +321,7 @@ func toDomain(r *attemptRow) (*domain.Attempt, error) {
 		domain.UserID(r.UserID),
 		r.GuestName,
 		r.StartedAt,
-		time.Duration(r.DurationSec)*time.Second,
+		policy,
 		r.Seed,
 		plan,
 		r.Cursor,

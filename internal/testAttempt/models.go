@@ -117,7 +117,7 @@ type Attempt struct {
 	submittedAt *time.Time
 	expiredAt   *time.Time
 	status      AttemptStatus
-	duration    time.Duration
+	policy      AttemptPolicy
 	version     int
 	seed        int64
 	score       float64
@@ -129,7 +129,11 @@ type Attempt struct {
 	totalVisible int // total questions in the plan
 }
 
-func NewAttempt(id AttemptID, assignment AssignmentID, test TestID, user UserID, guestName *string, now time.Time, dur time.Duration, seed int64) *Attempt {
+func (a *Attempt) Policy() AttemptPolicy {
+	return a.policy
+}
+
+func NewAttempt(id AttemptID, assignment AssignmentID, test TestID, user UserID, guestName *string, now time.Time, policy AttemptPolicy, seed int64) *Attempt {
 	return &Attempt{
 		id:           id,
 		assignment:   assignment,
@@ -138,7 +142,7 @@ func NewAttempt(id AttemptID, assignment AssignmentID, test TestID, user UserID,
 		guestName:    guestName,
 		startedAt:    now.UTC(),
 		status:       StatusActive,
-		duration:     dur,
+		policy:       policy,
 		version:      0,
 		seed:         seed,
 		answers:      make(map[QuestionID]Answer),
@@ -164,7 +168,7 @@ func (a *Attempt) Version() int             { return a.version }
 func (a *Attempt) StartedAt() time.Time     { return a.startedAt }
 func (a *Attempt) SubmittedAt() *time.Time  { return a.submittedAt }
 func (a *Attempt) ExpiredAt() *time.Time    { return a.expiredAt }
-func (a *Attempt) Duration() time.Duration  { return a.duration }
+func (a *Attempt) Duration() time.Duration  { return a.policy.MaxAttemptTime }
 func (a *Attempt) Deadline() (time.Time, bool) {
 	dl := a.deadline()
 	return dl, !dl.IsZero()
@@ -307,14 +311,14 @@ func (a *Attempt) Cancel(clientVersion int, now time.Time) (int, error) {
 }
 
 func (a *Attempt) deadline() time.Time {
-	if a.duration <= 0 {
+	if a.policy.MaxAttemptTime <= 0 {
 		return time.Time{}
 	}
-	return a.startedAt.Add(a.duration)
+	return a.startedAt.Add(a.policy.MaxAttemptTime)
 }
 
 func (a *Attempt) exceeded(now time.Time) bool {
-	if a.duration <= 0 {
+	if a.policy.MaxAttemptTime <= 0 {
 		return false
 	}
 	dl := a.deadline()
@@ -323,6 +327,31 @@ func (a *Attempt) exceeded(now time.Time) bool {
 	}
 	return !dl.After(now)
 }
+
+type AttemptPolicy struct {
+	ShuffleQuestions    bool
+	ShuffleAnswers      bool
+	MaxQuestions        int
+	QuestionTimeLimit   time.Duration
+	MaxAttemptTime      time.Duration
+	RequireAllAnswered  bool
+	LockAnswerOnConfirm bool
+	DisableCopy         bool
+	DisableBrowserBack  bool
+	ShowElapsedTime     bool
+	RevealScoreMode     ScoreRevealMode
+	RevealSolutions     bool
+	AllowNavigation     bool
+	MaxAttempts         int
+}
+
+type ScoreRevealMode string
+
+const (
+	ScoreRevealNever       ScoreRevealMode = "never"
+	ScoreRevealAfterSubmit ScoreRevealMode = "after_submit"
+	ScoreRevealAlways      ScoreRevealMode = "always"
+)
 
 func validateScores(score, max float64) error {
 	if math.IsNaN(score) || math.IsNaN(max) || math.IsInf(score, 0) || math.IsInf(max, 0) {
