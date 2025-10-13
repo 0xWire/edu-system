@@ -24,6 +24,9 @@ func RehydrateAttempt(
 	expiredAt *time.Time,
 	score float64,
 	maxScore float64,
+	clientIP string,
+	clientFingerprint string,
+	questionOpenedAt *time.Time,
 ) (*Attempt, error) {
 	if version < 0 {
 		return nil, fmt.Errorf("version must be non-negative: %d", version)
@@ -41,19 +44,21 @@ func RehydrateAttempt(
 	}
 
 	a := &Attempt{
-		id:           id,
-		assignment:   assignment,
-		test:         test,
-		user:         user,
-		startedAt:    startedAt.UTC(),
-		status:       status,
-		policy:       policy,
-		version:      version,
-		seed:         seed,
-		answers:      make(map[QuestionID]Answer, len(answers)),
-		totalVisible: len(order),
-		score:        score,
-		maxScore:     maxScore,
+		id:                id,
+		assignment:        assignment,
+		test:              test,
+		user:              user,
+		startedAt:         startedAt.UTC(),
+		status:            status,
+		policy:            policy,
+		version:           version,
+		seed:              seed,
+		answers:           make(map[QuestionID]Answer, len(answers)),
+		totalVisible:      len(order),
+		score:             score,
+		maxScore:          maxScore,
+		clientIP:          clientIP,
+		clientFingerprint: clientFingerprint,
 	}
 
 	if guestName != nil {
@@ -78,6 +83,10 @@ func RehydrateAttempt(
 	if expiredAt != nil {
 		t := expiredAt.UTC()
 		a.expiredAt = &t
+	}
+	if questionOpenedAt != nil {
+		t := questionOpenedAt.UTC()
+		a.questionOpenedAt = &t
 	}
 
 	if a.status != StatusActive {

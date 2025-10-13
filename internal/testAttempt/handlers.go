@@ -39,7 +39,15 @@ func (h *Handlers) Start(c *gin.Context) {
 		u := UserID(uid)
 		userIDPtr = &u
 	}
-	id, err := h.svc.StartAttempt(c, userIDPtr, req.GuestName, AssignmentID(req.AssignmentID))
+	meta := AttemptMetadata{ClientIP: c.ClientIP()}
+	if req.Fingerprint != nil {
+		meta.Fingerprint = *req.Fingerprint
+	} else if header := c.GetHeader("X-Attempt-Fingerprint"); header != "" {
+		meta.Fingerprint = header
+	} else if cookie, err := c.Cookie("attempt_fingerprint"); err == nil {
+		meta.Fingerprint = cookie
+	}
+	id, err := h.svc.StartAttempt(c, userIDPtr, req.GuestName, AssignmentID(req.AssignmentID), meta)
 	if err != nil {
 		writeDomainErr(c, err)
 		return
@@ -49,16 +57,7 @@ func (h *Handlers) Start(c *gin.Context) {
 		writeDomainErr(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, dto.AttemptView{
-		AttemptID:    av.AttemptID,
-		AssignmentID: av.AssignmentID,
-		Status:       av.Status,
-		Version:      av.Version,
-		TimeLeftSec:  av.TimeLeftSec,
-		Total:        av.Total,
-		Cursor:       av.Cursor,
-		GuestName:    av.GuestName,
-	})
+	c.JSON(http.StatusOK, toDTOAttemptView(av))
 }
 
 // GET /v1/attempts/:id/question
@@ -79,16 +78,7 @@ func (h *Handlers) NextQuestion(c *gin.Context) {
 		return
 	}
 	resp := dto.NextQuestionResponse{
-		Attempt: dto.AttemptView{
-			AttemptID:    av.AttemptID,
-			AssignmentID: av.AssignmentID,
-			Status:       av.Status,
-			Version:      av.Version,
-			TimeLeftSec:  av.TimeLeftSec,
-			Total:        av.Total,
-			Cursor:       av.Cursor,
-			GuestName:    av.GuestName,
-		},
+		Attempt: toDTOAttemptView(av),
 		Question: dto.QuestionView{
 			ID:           qv.ID,
 			QuestionText: qv.QuestionText,
@@ -134,16 +124,7 @@ func (h *Handlers) Answer(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, dto.AnswerResponse{
-		Attempt: dto.AttemptView{
-			AttemptID:    av.AttemptID,
-			AssignmentID: av.AssignmentID,
-			Status:       av.Status,
-			Version:      av.Version,
-			TimeLeftSec:  av.TimeLeftSec,
-			Total:        av.Total,
-			Cursor:       av.Cursor,
-			GuestName:    av.GuestName,
-		},
+		Attempt:    toDTOAttemptView(av),
 		QuestionID: answered.QuestionID,
 	})
 }
@@ -174,16 +155,7 @@ func (h *Handlers) Submit(c *gin.Context) {
 		writeDomainErr(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, dto.SubmitResponse{Attempt: dto.AttemptView{
-		AttemptID:    av.AttemptID,
-		AssignmentID: av.AssignmentID,
-		Status:       av.Status,
-		Version:      av.Version,
-		TimeLeftSec:  av.TimeLeftSec,
-		Total:        av.Total,
-		Cursor:       av.Cursor,
-		GuestName:    av.GuestName,
-	}})
+	c.JSON(http.StatusOK, dto.SubmitResponse{Attempt: toDTOAttemptView(av)})
 }
 
 // POST /v1/attempts/:id/cancel
@@ -212,16 +184,7 @@ func (h *Handlers) Cancel(c *gin.Context) {
 		writeDomainErr(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, dto.SubmitResponse{Attempt: dto.AttemptView{
-		AttemptID:    av.AttemptID,
-		AssignmentID: av.AssignmentID,
-		Status:       av.Status,
-		Version:      av.Version,
-		TimeLeftSec:  av.TimeLeftSec,
-		Total:        av.Total,
-		Cursor:       av.Cursor,
-		GuestName:    av.GuestName,
-	}})
+	c.JSON(http.StatusOK, dto.SubmitResponse{Attempt: toDTOAttemptView(av)})
 }
 
 // GET /v1/attempts?assignment_id=
@@ -307,6 +270,33 @@ func userIDFromCtx(c *gin.Context) (uint64, bool) {
 
 func errJSON(code, msg string) gin.H { return gin.H{"error": gin.H{"code": code, "message": msg}} }
 
+func toDTOAttemptView(av AttemptView) dto.AttemptView {
+	return dto.AttemptView{
+		AttemptID:    av.AttemptID,
+		AssignmentID: av.AssignmentID,
+		Status:       av.Status,
+		Version:      av.Version,
+		TimeLeftSec:  av.TimeLeftSec,
+		Total:        av.Total,
+		Cursor:       av.Cursor,
+		GuestName:    av.GuestName,
+		Policy: dto.AttemptPolicyView{
+			ShuffleQuestions:     av.Policy.ShuffleQuestions,
+			ShuffleAnswers:       av.Policy.ShuffleAnswers,
+			RequireAllAnswered:   av.Policy.RequireAllAnswered,
+			LockAnswerOnConfirm:  av.Policy.LockAnswerOnConfirm,
+			DisableCopy:          av.Policy.DisableCopy,
+			DisableBrowserBack:   av.Policy.DisableBrowserBack,
+			ShowElapsedTime:      av.Policy.ShowElapsedTime,
+			AllowNavigation:      av.Policy.AllowNavigation,
+			QuestionTimeLimitSec: av.Policy.QuestionTimeLimitSec,
+			MaxAttemptTimeSec:    av.Policy.MaxAttemptTimeSec,
+			RevealScoreMode:      av.Policy.RevealScoreMode,
+			RevealSolutions:      av.Policy.RevealSolutions,
+		},
+	}
+}
+
 func writeDomainErr(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, ErrClosed):
@@ -319,6 +309,10 @@ func writeDomainErr(c *gin.Context, err error) {
 		c.JSON(http.StatusOK, gin.H{"done": true})
 	case errors.Is(err, ErrGuestsNotAllowed), errors.Is(err, ErrForbidden):
 		c.JSON(http.StatusForbidden, errJSON("forbidden", err.Error()))
+	case errors.Is(err, ErrMaxAttempts):
+		c.JSON(http.StatusTooManyRequests, errJSON("max_attempts", err.Error()))
+	case errors.Is(err, ErrQuestionTimeLimit):
+		c.JSON(http.StatusGone, errJSON("question_time_limit", err.Error()))
 	case errors.Is(err, ErrAssignmentNotFound):
 		c.JSON(http.StatusNotFound, errJSON("assignment_not_found", err.Error()))
 	default:

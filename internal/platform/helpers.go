@@ -30,7 +30,7 @@ func (p AllowGuestsAndOwnerPolicy) CanStartAttempt(ctx context.Context, userID *
 	if userID != nil {
 		return nil
 	}
-	_, _, _, allowGuests, err := p.Tests.GetTestSettings(ctx, string(testID))
+	_, _, _, allowGuests, _, err := p.Tests.GetTestSettings(ctx, string(testID))
 	if err != nil {
 		return err
 	}
