@@ -13,7 +13,6 @@
       "backToDashboard": "Back to dashboard",
       "startTest": "Start test",
       "retry": "Try again",
-      "openTest": "Open test",
       "share": "Share link",
       "newTest": "New test",
       "copyLink": "Copy link",
@@ -84,6 +83,47 @@
       "unknownAuthor": "Not specified",
       "ready": "Ready to launch"
     },
+    "launch": {
+      "tag": "launch setup",
+      "title": "Configure attempt for {name}",
+      "subtitle": "Adjust the experience before sharing the link with learners.",
+      "sections": {
+        "general": "General settings",
+        "policy": "Attempt policy"
+      },
+      "fields": {
+        "duration": "Duration (minutes, 0 = unlimited)",
+        "maxAttempts": "Attempts per participant (0 = unlimited)",
+        "maxQuestions": "Questions in this attempt (0 = all)",
+        "questionTime": "Per-question time limit (seconds, 0 = unlimited)",
+        "attemptTime": "Overall time limit (minutes, 0 = unlimited)",
+        "allowGuests": "Allow guest access",
+        "shuffleQuestions": "Shuffle question order",
+        "shuffleAnswers": "Shuffle answer options",
+        "requireAll": "Require all questions answered",
+        "lockOnConfirm": "Lock answer after submission",
+        "disableCopy": "Disable copy / paste",
+        "disableBack": "Disable browser back button",
+        "showElapsed": "Show elapsed time",
+        "allowNavigation": "Allow navigation between questions",
+        "revealSolutions": "Reveal solutions after submission",
+        "revealScoreMode": "Score visibility"
+      },
+      "scoreModes": {
+        "never": "Never",
+        "after_submit": "After submission",
+        "always": "During attempt"
+      },
+      "actions": {
+        "cancel": "Cancel",
+        "start": "Start & share",
+        "processing": "Starting…"
+      },
+      "errors": {
+        "update": "We couldn't update the test settings. Try again.",
+        "create": "We couldn't create a share link. Try again."
+      }
+    },
     "assignments": {
       "title": "Test attempts",
       "subtitle": "Generated links and learner results appear here.",
@@ -153,6 +193,7 @@
     "guestLabel": "Guest mode: {name}",
     "subtitleSubmitted": "Attempt submitted for review",
     "subtitleCancelled": "Attempt cancelled",
+    "subtitleExpired": "Time for the attempt has expired",
     "subtitleActive": "Do not close this page until you finish.",
     "questionProgress": "Question {current} of {total}",
     "errorTitle": "Could not start the test",
@@ -160,23 +201,47 @@
     "answerError": "We couldn't submit your answer. Please try again.",
     "submitError": "We couldn't submit the test. Please try again.",
     "cancelError": "We couldn't cancel the attempt. Please try again.",
+    "maxAttempts": "You reached the maximum number of attempts for this test.",
+    "forbidden": "You are not allowed to start this attempt.",
+    "notFound": "We could not find this assignment.",
+    "questionTimeout": "Time for this question has expired.",
+    "versionMismatch": "The attempt changed in another window. Please refresh and try again.",
+    "backBlocked": "Back navigation is disabled for this test.",
     "completedTag": "test completed",
     "completedTitle": "Great job! Your attempt is submitted",
     "completedDescription": "Your answers have been recorded. You can close this page or go back to other tests.",
     "resultLabel": "Result",
+    "liveScore": "Live score",
+    "elapsed": "Elapsed time: {time}",
+    "copyWarning": "Copying, pasting and context menus are disabled for this test.",
+    "finishDisabled": "Answer all questions before finishing the attempt.",
+    "scoreHidden": "Results will appear after your instructor reviews the attempt.",
+    "solutionsAvailable": "Correct answers are visible after submission.",
+    "solutionsHidden": "Correct answers remain hidden for this test.",
     "loader": "Preparing the test…",
     "nextQuestion": "Loading the next question…",
     "buttons": {
       "tryAgain": "Try again",
       "finish": "Finish attempt",
       "cancel": "Cancel attempt"
+    },
+    "policy": {
+      "timeLimit": "Total time limit: {minutes} min",
+      "questionLimit": "Per-question limit: {seconds}s",
+      "requireAll": "All questions required",
+      "lockOnConfirm": "Answer locks after submission",
+      "noNavigation": "No backtracking inside the test",
+      "noCopy": "Copy & paste disabled",
+      "noBack": "Browser back button disabled"
     }
   },
   "question": {
     "tag": "question",
     "answerHint": "Select an option and press \"Submit answer\". Your answer is saved immediately.",
     "optionImageAlt": "Answer option illustration",
-    "imageAlt": "Question illustration"
+    "imageAlt": "Question illustration",
+    "timeLimitLabel": "Question timer",
+    "timeRemaining": "Time left: {time}"
   },
   "timer": {
     "label": "Time remaining",

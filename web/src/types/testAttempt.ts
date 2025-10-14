@@ -1,3 +1,18 @@
+export interface AttemptPolicyView {
+  shuffle_questions: boolean;
+  shuffle_answers: boolean;
+  require_all_answered: boolean;
+  lock_answer_on_confirm: boolean;
+  disable_copy: boolean;
+  disable_browser_back: boolean;
+  show_elapsed_time: boolean;
+  allow_navigation: boolean;
+  question_time_limit_sec: number;
+  max_attempt_time_sec: number;
+  reveal_score_mode: 'never' | 'after_submit' | 'always';
+  reveal_solutions: boolean;
+}
+
 export interface AttemptView {
   attempt_id: string;
   assignment_id: string;
@@ -9,6 +24,7 @@ export interface AttemptView {
   guest_name?: string;
   score?: number;
   max_score?: number;
+  policy?: AttemptPolicyView | null;
 }
 
 export interface QuestionView {
@@ -28,9 +44,16 @@ export interface AnsweredView {
   question_id: string;
 }
 
+export interface NextQuestionResponse {
+  attempt: AttemptView | null;
+  question: QuestionView | null;
+  done?: boolean;
+}
+
 export interface StartAttemptRequest {
   assignment_id: string;
   guest_name?: string;
+  fingerprint?: string;
 }
 
 export interface AnswerPayload {
