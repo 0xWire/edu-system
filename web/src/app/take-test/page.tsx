@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import TestAttemptPage from '@/components/TestAttempt/TestAttemptPage';
 import { useI18n } from '@/contexts/LanguageContext';
@@ -10,12 +10,13 @@ import type { AssignmentView } from '@/types/assignment';
 export default function TakeTestPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
 
   const assignmentId = searchParams.get('assignmentId');
 
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [guestName, setGuestName] = useState('');
-  const [isGuest, setIsGuest] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [shareLink, setShareLink] = useState('');
   const [assignment, setAssignment] = useState<AssignmentView | null>(null);
@@ -60,10 +61,105 @@ export default function TakeTestPage() {
     return undefined;
   }, [copyState]);
 
-  const invitationDescription = useMemo(
-    () => (isGuest ? t('takeTest.invitationGuest') : t('takeTest.invitationAccount')),
-    [isGuest, t]
+  const numberFormatter = useMemo(() => new Intl.NumberFormat(language), [language]);
+
+  const formatUnit = useCallback(
+    (value: number, unit: 'hour' | 'minute' | 'second') => {
+      if (value <= 0) {
+        return '';
+      }
+
+      if (language === 'uk') {
+        const forms: Record<typeof unit, [string, string, string]> = {
+          hour: ['година', 'години', 'годин'],
+          minute: ['хвилина', 'хвилини', 'хвилин'],
+          second: ['секунда', 'секунди', 'секунд']
+        };
+        const mod10 = value % 10;
+        const mod100 = value % 100;
+        let label = forms[unit][2];
+        if (mod10 === 1 && mod100 !== 11) {
+          label = forms[unit][0];
+        } else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) {
+          label = forms[unit][1];
+        }
+        return `${numberFormatter.format(value)} ${label}`;
+      }
+
+      const englishLabels: Record<typeof unit, [string, string]> = {
+        hour: ['hour', 'hours'],
+        minute: ['minute', 'minutes'],
+        second: ['second', 'seconds']
+      };
+      const [singular, plural] = englishLabels[unit];
+      return `${numberFormatter.format(value)} ${value === 1 ? singular : plural}`;
+    },
+    [language, numberFormatter]
   );
+
+  const formatTimeLimit = useCallback(
+    (seconds?: number) => {
+      if (!seconds || seconds <= 0) {
+        return t('takeTest.timeLimitNone');
+      }
+
+      const total = Math.max(Math.floor(seconds), 0);
+      const hours = Math.floor(total / 3600);
+      const minutes = Math.floor((total % 3600) / 60);
+      const secs = total % 60;
+
+      const parts: string[] = [];
+      if (hours > 0) {
+        parts.push(formatUnit(hours, 'hour'));
+      }
+      if (minutes > 0) {
+        parts.push(formatUnit(minutes, 'minute'));
+      }
+      if (hours === 0 && minutes === 0 && secs > 0) {
+        parts.push(formatUnit(secs, 'second'));
+      }
+
+      if (parts.length === 0) {
+        return t('takeTest.timeLimitNone');
+      }
+
+      return parts.join(' ');
+    },
+    [formatUnit, t]
+  );
+
+  const timeLimitSeconds = useMemo(() => {
+    if (!assignment) {
+      return 0;
+    }
+    if (typeof assignment.max_attempt_time_sec === 'number' && assignment.max_attempt_time_sec > 0) {
+      return assignment.max_attempt_time_sec;
+    }
+    if (typeof assignment.duration_sec === 'number' && assignment.duration_sec > 0) {
+      return assignment.duration_sec;
+    }
+    return 0;
+  }, [assignment]);
+
+  const timeLimitText = useMemo(
+    () => (assignment ? formatTimeLimit(timeLimitSeconds) : '--'),
+    [assignment, formatTimeLimit, timeLimitSeconds]
+  );
+
+  const fullName = useMemo(
+    () => [firstName.trim(), lastName.trim()].filter(Boolean).join(' '),
+    [firstName, lastName]
+  );
+
+  const canStart = fullName.length > 0;
+
+  const handleStart = useCallback(() => {
+    if (!canStart) {
+      return;
+    }
+    setGuestName(fullName);
+    setHasStarted(true);
+  }, [canStart, fullName, setGuestName, setHasStarted]);
 
   if (!assignmentId) {
     return (
@@ -96,54 +192,55 @@ export default function TakeTestPage() {
               <h1 className="mt-4 text-3xl font-semibold text-white">{t('takeTest.setupTitle')}</h1>
               <p className="mt-3 text-sm text-slate-200">{t('takeTest.setupDescription')}</p>
 
-              <div className="mt-8 space-y-5">
-                <label className="flex cursor-pointer items-start gap-4 rounded-2xl border border-white/15 bg-white/5 p-5 transition hover:border-indigo-300">
-                  <input
-                    type="radio"
-                    name="mode"
-                    checked={!isGuest}
-                    onChange={() => setIsGuest(false)}
-                    className="mt-1 h-4 w-4 border-slate-400 text-indigo-500 focus:ring-indigo-500"
-                  />
-                  <div>
-                    <p className="font-medium text-white">{t('takeTest.accountOption')}</p>
-                    <p className="mt-1 text-sm text-slate-300">{t('takeTest.accountDescription')}</p>
+              <div className="mt-8 space-y-6">
+                <div className="rounded-2xl border border-white/15 bg-white/5 p-5">
+                  <p className="text-xs uppercase tracking-[0.3em] text-indigo-300">{t('takeTest.detailsTag')}</p>
+                  <h2 className="mt-3 text-xl font-semibold text-white">
+                    {assignment?.title || t('dashboard.assignments.untitled')}
+                  </h2>
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.3em] text-indigo-200">
+                      {t('takeTest.timeLimitLabel')}
+                    </p>
+                    <p className="mt-2 text-sm text-slate-100">{timeLimitText}</p>
                   </div>
-                </label>
-
-                <label className="flex cursor-pointer items-start gap-4 rounded-2xl border border-white/15 bg-white/5 p-5 transition hover:border-indigo-300">
-                  <input
-                    type="radio"
-                    name="mode"
-                    checked={isGuest}
-                    onChange={() => setIsGuest(true)}
-                    className="mt-1 h-4 w-4 border-slate-400 text-indigo-500 focus:ring-indigo-500"
-                  />
-                  <div>
-                    <p className="font-medium text-white">{t('takeTest.guestOption')}</p>
-                    <p className="mt-1 text-sm text-slate-300">{t('takeTest.guestDescription')}</p>
-                  </div>
-                </label>
-              </div>
-
-              <p className="mt-6 text-xs uppercase tracking-[0.3em] text-indigo-300">{t('takeTest.tipTag')}</p>
-              <p className="mt-2 text-sm text-slate-200">{invitationDescription}</p>
-
-              {isGuest && (
-                <div className="mt-6">
-                  <label htmlFor="guest-name" className="block text-sm font-medium text-indigo-200">
-                    {t('takeTest.guestLabel')}
-                  </label>
-                  <input
-                    id="guest-name"
-                    type="text"
-                    value={guestName}
-                    onChange={(e) => setGuestName(e.target.value)}
-                    placeholder={t('common.helpers.exampleName')}
-                    className="mt-2 w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/60"
-                  />
                 </div>
-              )}
+
+                <div className="rounded-2xl border border-white/15 bg-white/5 p-5">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label htmlFor="first-name" className="block text-sm font-medium text-indigo-200">
+                        {t('takeTest.firstNameLabel')}
+                      </label>
+                      <input
+                        id="first-name"
+                        type="text"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        className="mt-2 w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/60"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="last-name" className="block text-sm font-medium text-indigo-200">
+                        {t('takeTest.lastNameLabel')}
+                      </label>
+                      <input
+                        id="last-name"
+                        type="text"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        className="mt-2 w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/60"
+                      />
+                    </div>
+                  </div>
+                  <p className="mt-3 text-xs text-slate-300">{t('takeTest.nameHelp')}</p>
+                </div>
+
+                <div className="rounded-2xl border border-white/15 bg-white/5 p-5">
+                  <p className="text-xs uppercase tracking-[0.3em] text-indigo-300">{t('takeTest.tipTag')}</p>
+                  <p className="mt-2 text-sm text-slate-200">{t('takeTest.tipText')}</p>
+                </div>
+              </div>
 
               <div className="mt-8 flex flex-wrap gap-3">
                 <button
@@ -155,10 +252,10 @@ export default function TakeTestPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setHasStarted(true)}
-                  disabled={isGuest && !guestName.trim()}
+                  onClick={handleStart}
+                  disabled={!canStart}
                   className={`rounded-2xl px-6 py-3 text-sm font-semibold shadow-lg transition ${
-                    isGuest && !guestName.trim()
+                    !canStart
                       ? 'cursor-not-allowed bg-slate-600/40 text-slate-300 shadow-none'
                       : 'bg-indigo-500 text-white shadow-indigo-500/30 hover:bg-indigo-600'
                   }`}
@@ -210,5 +307,5 @@ export default function TakeTestPage() {
     );
   }
 
-  return <TestAttemptPage assignmentId={assignmentId} guestName={isGuest ? guestName : undefined} />;
+  return <TestAttemptPage assignmentId={assignmentId} guestName={guestName || undefined} />;
 }

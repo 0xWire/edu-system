@@ -26,6 +26,11 @@ func NewService(repo Repository, tests test.TestRepository) *Service {
 	return &Service{repo: repo, tests: tests, clock: func() time.Time { return time.Now().UTC() }}
 }
 
+type TestSettingsSummary struct {
+	DurationSec       int
+	MaxAttemptTimeSec int64
+}
+
 func (s *Service) Create(ctx context.Context, ownerID uint, testID string, title string) (*Assignment, error) {
 	t, err := s.tests.GetByID(testID)
 	if err != nil {
@@ -60,6 +65,24 @@ func (s *Service) Get(ctx context.Context, id string) (*Assignment, error) {
 		return nil, err
 	}
 	return a, nil
+}
+
+func (s *Service) GetTestSettings(ctx context.Context, testID string) (*TestSettingsSummary, error) {
+	durationSec, _, _, _, policy, err := s.tests.GetTestSettings(ctx, testID)
+	if err != nil {
+		return nil, err
+	}
+
+	summary := &TestSettingsSummary{
+		DurationSec: durationSec,
+	}
+	if policy.MaxAttemptTime > 0 {
+		summary.MaxAttemptTimeSec = int64(policy.MaxAttemptTime / time.Second)
+	} else if durationSec > 0 {
+		summary.MaxAttemptTimeSec = int64(durationSec)
+	}
+
+	return summary, nil
 }
 
 func (s *Service) ListByOwner(ctx context.Context, ownerID uint) ([]Assignment, error) {
