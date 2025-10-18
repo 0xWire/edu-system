@@ -55,6 +55,10 @@ type AssignmentDescriptor struct {
 	Title   string
 }
 
+type UserDirectory interface {
+	Lookup(ctx context.Context, ids []UserID) (map[UserID]UserInfo, error)
+}
+
 type Service struct {
 	repo        Repository
 	tests       TestReadModel
@@ -62,10 +66,11 @@ type Service struct {
 	tx          Transactor
 	clock       Clock
 	policy      Policy
+	users       UserDirectory
 }
 
-func NewTestAttemptService(repo Repository, tests TestReadModel, assignments AssignmentReadModel, tx Transactor, clock Clock, policy Policy) *Service {
-	return &Service{repo: repo, tests: tests, assignments: assignments, tx: tx, clock: clock, policy: policy}
+func NewTestAttemptService(repo Repository, tests TestReadModel, assignments AssignmentReadModel, tx Transactor, clock Clock, policy Policy, users UserDirectory) *Service {
+	return &Service{repo: repo, tests: tests, assignments: assignments, tx: tx, clock: clock, policy: policy, users: users}
 }
 
 func (s *Service) StartAttempt(ctx context.Context, userID *UserID, guestName *string, assignmentID AssignmentID) (AttemptID, error) {
@@ -169,6 +174,47 @@ func (s *Service) AnswerCurrent(ctx context.Context, requester *UserID, id Attem
 	av := attemptToView(a, s.clock.Now())
 	av.Version = newVersion
 	return av, AnsweredView{QuestionID: string(qid)}, nil
+}
+
+func (s *Service) ListAssignmentAttempts(ctx context.Context, requester UserID, assignmentID AssignmentID) ([]AttemptSummary, error) {
+	descriptor, err := s.assignments.GetAssignment(ctx, assignmentID)
+	if err != nil {
+		return nil, err
+	}
+	if descriptor.OwnerID != requester {
+		return nil, ErrForbidden
+	}
+	summaries, err := s.repo.ListSummariesByAssignments(ctx, []AssignmentID{assignmentID})
+	if err != nil {
+		return nil, err
+	}
+	if s.users == nil {
+		return summaries, nil
+	}
+	idsSet := make(map[UserID]struct{})
+	for _, summary := range summaries {
+		if summary.UserID != 0 {
+			idsSet[summary.UserID] = struct{}{}
+		}
+	}
+	if len(idsSet) == 0 {
+		return summaries, nil
+	}
+	ids := make([]UserID, 0, len(idsSet))
+	for id := range idsSet {
+		ids = append(ids, id)
+	}
+	profiles, err := s.users.Lookup(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for i := range summaries {
+		if info, ok := profiles[summaries[i].UserID]; ok {
+			val := info
+			summaries[i].User = &val
+		}
+	}
+	return summaries, nil
 }
 
 func (s *Service) Submit(ctx context.Context, requester *UserID, id AttemptID, version int) (AttemptView, error) {

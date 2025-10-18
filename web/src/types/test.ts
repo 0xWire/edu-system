@@ -30,13 +30,16 @@ export interface CreateTestRequest {
 
 export interface QuestionFormData {
   question_text: string;
-  options: { answer_text: string }[];
+  options: AnswerFormData[];
   correct_option: number;
   image_url?: string;
+  image_preview?: string;
 }
 
 export interface AnswerFormData {
   answer_text: string;
+  image_url?: string;
+  image_preview?: string;
 }
 
 export interface CreateTestResponse {

@@ -6,7 +6,8 @@ import {
   StartAttemptRequest,
   SubmitAnswerRequest,
   SubmitAttemptRequest,
-  CancelAttemptRequest
+  CancelAttemptRequest,
+  AttemptSummary
 } from '@/types/testAttempt';
 
 export class TestAttemptService {
@@ -64,6 +65,18 @@ export class TestAttemptService {
       return response.data;
     } catch (error) {
       console.error('Failed to cancel test attempt:', error);
+      throw error;
+    }
+  }
+
+  static async listAttempts(assignmentId: string): Promise<AttemptSummary[]> {
+    try {
+      const response = await api.get('/api/v1/attempts', {
+        params: { assignment_id: assignmentId }
+      });
+      return response.data?.attempts ?? [];
+    } catch (error) {
+      console.error('Failed to load attempt summaries:', error);
       throw error;
     }
   }

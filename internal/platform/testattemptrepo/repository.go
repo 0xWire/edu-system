@@ -131,6 +131,41 @@ func (r *Repo) Cancel(ctx context.Context, a *domain.Attempt) error {
 		}).Error
 }
 
+func (r *Repo) ListSummariesByAssignments(ctx context.Context, assignments []domain.AssignmentID) ([]domain.AttemptSummary, error) {
+	if len(assignments) == 0 {
+		return []domain.AttemptSummary{}, nil
+	}
+	ids := make([]string, len(assignments))
+	for i, id := range assignments {
+		ids[i] = string(id)
+	}
+	var rows []attemptRow
+	if err := r.db.WithContext(ctx).
+		Where("assignment_id IN ?", ids).
+		Order("started_at DESC").
+		Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	out := make([]domain.AttemptSummary, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, domain.AttemptSummary{
+			AttemptID:    domain.AttemptID(row.ID),
+			AssignmentID: domain.AssignmentID(row.AssignmentID),
+			TestID:       domain.TestID(row.TestID),
+			UserID:       domain.UserID(row.UserID),
+			GuestName:    row.GuestName,
+			Status:       domain.AttemptStatus(row.Status),
+			StartedAt:    row.StartedAt,
+			SubmittedAt:  row.SubmittedAt,
+			ExpiredAt:    row.ExpiredAt,
+			Duration:     time.Duration(row.DurationSec) * time.Second,
+			Score:        row.Score,
+			MaxScore:     row.MaxScore,
+		})
+	}
+	return out, nil
+}
+
 type attemptRow struct {
 	ID           string `gorm:"primaryKey;type:varchar(36)"`
 	CreatedAt    time.Time

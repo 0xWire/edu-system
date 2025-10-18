@@ -2,16 +2,24 @@ package testAttempt
 
 import "github.com/gin-gonic/gin"
 
-func RegisterRoutes(v1 gin.IRouter, h *Handlers, authMW gin.HandlerFunc) {
-	grp := v1.Group("/attempts")
-	if authMW != nil {
-		grp.Use(authMW)
+func RegisterRoutes(v1 gin.IRouter, h *Handlers, optionalAuth gin.HandlerFunc, authRequired gin.HandlerFunc) {
+	open := v1.Group("/attempts")
+	if optionalAuth != nil {
+		open.Use(optionalAuth)
 	}
 	{
-		grp.POST("/start", h.Start)
-		grp.GET("/:id/question", h.NextQuestion)
-		grp.POST("/:id/answer", h.Answer)
-		grp.POST("/:id/submit", h.Submit)
-		grp.POST("/:id/cancel", h.Cancel)
+		open.POST("/start", h.Start)
+		open.GET("/:id/question", h.NextQuestion)
+		open.POST("/:id/answer", h.Answer)
+		open.POST("/:id/submit", h.Submit)
+		open.POST("/:id/cancel", h.Cancel)
+	}
+
+	secured := v1.Group("/attempts")
+	if authRequired != nil {
+		secured.Use(authRequired)
+	}
+	{
+		secured.GET("", h.ListByAssignment)
 	}
 }

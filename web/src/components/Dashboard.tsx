@@ -6,8 +6,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useI18n } from '@/contexts/LanguageContext';
 import { TestService } from '@/services/test';
 import { AssignmentService } from '@/services/assignment';
+import { TestAttemptService } from '@/services/testAttempt';
 import type { GetTestResponse } from '@/types/test';
-import CreateTestForm from './CreateTestForm';
+import type { AssignmentView } from '@/types/assignment';
+import type { AttemptSummary } from '@/types/testAttempt';
 
 interface InsightCard {
   label: string;
@@ -19,7 +21,11 @@ export default function Dashboard() {
   const [tests, setTests] = useState<GetTestResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasConnectionError, setHasConnectionError] = useState(false);
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [assignments, setAssignments] = useState<AssignmentView[]>([]);
+  const [assignmentsLoading, setAssignmentsLoading] = useState(true);
+  const [assignmentError, setAssignmentError] = useState(false);
+  const [attemptsByAssignment, setAttemptsByAssignment] = useState<Record<string, AttemptSummary[]>>({});
+  const [copiedAssignmentId, setCopiedAssignmentId] = useState<string | null>(null);
 
   const router = useRouter();
   const { user, logout } = useAuth();
@@ -39,9 +45,80 @@ export default function Dashboard() {
     }
   }, []);
 
+  const loadAssignments = useCallback(async () => {
+    try {
+      setAssignmentsLoading(true);
+      const data = await AssignmentService.getMyAssignments();
+      setAssignments(data);
+      const entries = await Promise.all(
+        data.map(async (assignment) => {
+          try {
+            const attempts = await TestAttemptService.listAttempts(assignment.assignment_id);
+            return [assignment.assignment_id, attempts] as const;
+          } catch (error) {
+            console.error('Failed to fetch attempts for assignment', assignment.assignment_id, error);
+            return [assignment.assignment_id, []] as const;
+          }
+        })
+      );
+      setAttemptsByAssignment(Object.fromEntries(entries));
+      setAssignmentError(false);
+    } catch (error) {
+      console.error('Failed to fetch assignments:', error);
+      setAssignments([]);
+      setAttemptsByAssignment({});
+      setAssignmentError(true);
+    } finally {
+      setAssignmentsLoading(false);
+    }
+  }, []);
+
+  const openCreateTest = useCallback(() => {
+    router.push('/tests/create');
+  }, [router]);
+
+  const buildShareLink = useCallback((assignment: AssignmentView) => {
+    if (typeof window === 'undefined') {
+      return assignment.share_url;
+    }
+    if (assignment.share_url.startsWith('http')) {
+      return assignment.share_url;
+    }
+    return `${window.location.origin}${assignment.share_url}`;
+  }, []);
+
+  const formatDateTime = useCallback((value?: string) => {
+    if (!value) {
+      return '—';
+    }
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return value;
+    }
+    return parsed.toLocaleString();
+  }, []);
+
+  const formatScore = useCallback((attempt: AttemptSummary) => {
+    if (Number.isFinite(attempt.max_score) && attempt.max_score > 0) {
+      const score = Math.round(attempt.score * 100) / 100;
+      const max = Math.round(attempt.max_score * 100) / 100;
+      return `${score} / ${max}`;
+    }
+    return '—';
+  }, []);
+
   useEffect(() => {
     void fetchTests();
-  }, [fetchTests]);
+    void loadAssignments();
+  }, [fetchTests, loadAssignments]);
+
+  useEffect(() => {
+    if (!copiedAssignmentId) {
+      return undefined;
+    }
+    const timeout = window.setTimeout(() => setCopiedAssignmentId(null), 2000);
+    return () => window.clearTimeout(timeout);
+  }, [copiedAssignmentId]);
 
   const metrics = useMemo<InsightCard[]>(() => {
     const totalTests = tests.length;
@@ -85,17 +162,47 @@ export default function Dashboard() {
     ];
   }, [tests, t]);
 
+  const attemptStatusLabels = useMemo(() => ({
+    active: t('dashboard.assignments.status.active'),
+    submitted: t('dashboard.assignments.status.submitted'),
+    expired: t('dashboard.assignments.status.expired'),
+    canceled: t('dashboard.assignments.status.canceled')
+  }), [t]);
+
   const handleLogout = () => {
     logout();
     window.location.href = '/login';
   };
 
-  const handleStartTest = async (testId: string) => {
+  const handleCopyAssignmentLink = useCallback(async (assignment: AssignmentView) => {
+    try {
+      const link = buildShareLink(assignment);
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(link);
+        setCopiedAssignmentId(assignment.assignment_id);
+      }
+    } catch (error) {
+      console.error('Failed to copy assignment link', error);
+    }
+  }, [buildShareLink]);
+
+  const handleLaunchTest = async (testId: string) => {
     try {
       const assignment = await AssignmentService.createAssignment({ test_id: testId });
+      await loadAssignments();
       router.push(assignment.share_url);
     } catch (error) {
       console.error('Failed to start assignment', error);
+    }
+  };
+
+  const handleGenerateShareLink = async (testId: string) => {
+    try {
+      const assignment = await AssignmentService.createAssignment({ test_id: testId });
+      await loadAssignments();
+      await handleCopyAssignmentLink(assignment);
+    } catch (error) {
+      console.error('Failed to generate assignment link', error);
     }
   };
 
@@ -153,7 +260,7 @@ export default function Dashboard() {
             <div className="mt-6 flex flex-wrap gap-3">
               <button
                 type="button"
-                onClick={() => setShowCreateForm(true)}
+                onClick={openCreateTest}
                 className="rounded-2xl bg-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:bg-indigo-600"
               >
                 {t('common.actions.createTest')}
@@ -228,7 +335,7 @@ export default function Dashboard() {
             {!!tests.length && (
               <button
                 type="button"
-                onClick={() => setShowCreateForm(true)}
+                onClick={openCreateTest}
                 className="rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-indigo-200 transition hover:border-indigo-300 hover:text-white"
               >
                 {t('dashboard.library.quickAdd')}
@@ -242,7 +349,7 @@ export default function Dashboard() {
               <p className="mt-2 max-w-md text-sm text-slate-300">{t('dashboard.library.emptyDescription')}</p>
               <button
                 type="button"
-                onClick={() => setShowCreateForm(true)}
+                onClick={openCreateTest}
                 className="mt-6 rounded-2xl bg-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:bg-indigo-600"
               >
                 {t('dashboard.library.emptyAction')}
@@ -281,14 +388,18 @@ export default function Dashboard() {
                     <div className="mt-6 flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={() => handleStartTest(test.test_id)}
+                        onClick={() => {
+                          void handleLaunchTest(test.test_id);
+                        }}
                         className="flex-1 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-600"
                       >
                         {t('common.actions.openTest')}
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleStartTest(test.test_id)}
+                        onClick={() => {
+                          void handleGenerateShareLink(test.test_id);
+                        }}
                         className="rounded-xl border border-indigo-500 px-4 py-2 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-500 hover:text-white"
                       >
                         {t('common.actions.share')}
@@ -300,39 +411,146 @@ export default function Dashboard() {
             </div>
           )}
         </section>
-      </main>
 
-      {showCreateForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur">
-          <div className="relative w-full max-w-4xl overflow-hidden rounded-3xl border border-white/10 bg-white/95 shadow-[0_40px_120px_-40px_rgba(15,23,42,0.8)]">
-            <div className="flex items-center justify-between border-b border-slate-200/80 px-8 py-6">
-              <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-indigo-500">{t('dashboard.modal.tag')}</p>
-                <h3 className="text-2xl font-semibold text-slate-900">{t('dashboard.modal.title')}</h3>
-              </div>
+        <section className="mt-12 space-y-6">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h3 className="text-2xl font-semibold text-white">{t('dashboard.assignments.title')}</h3>
+              <p className="text-sm text-slate-300">{t('dashboard.assignments.subtitle')}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => setShowCreateForm(false)}
-                className="rounded-full border border-slate-200 p-2 text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
+                onClick={() => {
+                  void loadAssignments();
+                }}
+                className="rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-indigo-200 transition hover:border-indigo-300 hover:text-white"
               >
-                <span className="sr-only">{t('dashboard.modal.close')}</span>
-                <svg className="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l8 8M6 14L14 6" />
-                </svg>
+                {t('common.actions.refresh')}
               </button>
             </div>
-            <div className="max-h-[75vh] overflow-y-auto px-8 py-6">
-              <CreateTestForm
-                onSuccess={() => {
-                  setShowCreateForm(false);
-                  void fetchTests();
-                }}
-                onCancel={() => setShowCreateForm(false)}
-              />
-            </div>
           </div>
-        </div>
-      )}
+
+          {assignmentError ? (
+            <div className="rounded-3xl border border-red-400/40 bg-red-500/10 px-8 py-6 text-red-100 shadow-2xl">
+              <p className="text-sm font-semibold">{t('dashboard.assignments.errorTitle')}</p>
+              <p className="mt-1 text-sm">{t('dashboard.assignments.errorDescription')}</p>
+            </div>
+          ) : assignmentsLoading ? (
+            <div className="flex min-h-[160px] items-center justify-center rounded-3xl border border-white/10 bg-white/5">
+              <span className="h-12 w-12 animate-spin rounded-full border-4 border-indigo-400 border-t-transparent" />
+            </div>
+          ) : assignments.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-white/15 bg-white/5 px-8 py-12 text-center text-slate-200 shadow-2xl">
+              <p className="text-lg font-semibold text-white">{t('dashboard.assignments.emptyTitle')}</p>
+              <p className="mt-2 text-sm text-slate-300">{t('dashboard.assignments.emptySubtitle')}</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {assignments.map((assignment) => {
+                const attempts = attemptsByAssignment[assignment.assignment_id] ?? [];
+                const shareLink = buildShareLink(assignment);
+                const isCopied = copiedAssignmentId === assignment.assignment_id;
+                const title = assignment.title?.trim() || t('dashboard.assignments.untitled');
+
+                return (
+                  <article
+                    key={assignment.assignment_id}
+                    className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_30px_80px_-60px_rgba(15,23,42,0.8)] backdrop-blur"
+                  >
+                    <div className="flex flex-col gap-4 border-b border-white/10 pb-4 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.3em] text-indigo-300">{t('dashboard.assignments.cardTag')}</p>
+                        <h4 className="mt-2 text-xl font-semibold text-white">{title}</h4>
+                      </div>
+                      <div className="flex flex-1 flex-col gap-3 md:max-w-md">
+                        <label className="text-xs uppercase tracking-[0.3em] text-indigo-200">
+                          {t('dashboard.assignments.shareLabel')}
+                        </label>
+                        <div className="flex flex-col gap-3 sm:flex-row">
+                          <input
+                            type="text"
+                            value={shareLink}
+                            readOnly
+                            className="flex-1 rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm text-slate-100 placeholder:text-slate-400 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void handleCopyAssignmentLink(assignment);
+                            }}
+                            className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                              isCopied
+                                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
+                                : 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30 hover:bg-indigo-600'
+                            }`}
+                          >
+                            {isCopied ? t('common.actions.copied') : t('common.actions.copyLink')}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 overflow-x-auto">
+                      {attempts.length === 0 ? (
+                        <p className="rounded-2xl bg-slate-950/30 px-4 py-3 text-sm text-slate-300">
+                          {t('dashboard.assignments.noAttempts')}
+                        </p>
+                      ) : (
+                        <table className="min-w-full text-left text-sm text-slate-200">
+                          <thead className="text-xs uppercase tracking-[0.2em] text-indigo-200">
+                            <tr>
+                              <th className="pb-3 pr-6 font-semibold">{t('dashboard.assignments.columns.participant')}</th>
+                              <th className="pb-3 pr-6 font-semibold">{t('dashboard.assignments.columns.score')}</th>
+                              <th className="pb-3 pr-6 font-semibold">{t('dashboard.assignments.columns.status')}</th>
+                              <th className="pb-3 pr-6 font-semibold">{t('dashboard.assignments.columns.started')}</th>
+                              <th className="pb-3 font-semibold">{t('dashboard.assignments.columns.completed')}</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                            {attempts.map((attempt) => {
+                              const statusLabel = attemptStatusLabels[attempt.status as keyof typeof attemptStatusLabels] ?? attempt.status;
+                              const participantKind =
+                                attempt.participant.kind === 'guest'
+                                  ? t('dashboard.assignments.labels.guest')
+                                  : t('dashboard.assignments.labels.registered');
+
+                              return (
+                                <tr key={attempt.attempt_id} className="align-top">
+                                  <td className="py-3 pr-6">
+                                    <div className="flex flex-col">
+                                      <span className="font-medium text-white">{attempt.participant.name}</span>
+                                      <span className="text-xs text-slate-400">
+                                        {participantKind}
+                                        {attempt.participant.kind === 'user' && attempt.participant.user_id
+                                          ? ` · ID ${attempt.participant.user_id}`
+                                          : ''}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="py-3 pr-6 text-white">{formatScore(attempt)}</td>
+                                  <td className="py-3 pr-6">
+                                    <span className="inline-flex items-center rounded-full bg-indigo-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-indigo-200">
+                                      {statusLabel}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 pr-6 text-slate-200">{formatDateTime(attempt.started_at)}</td>
+                                  <td className="py-3 text-slate-200">{formatDateTime(attempt.submitted_at)}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </main>
+
     </div>
   );
 }

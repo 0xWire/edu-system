@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 )
 
@@ -178,6 +179,36 @@ func (a *Attempt) Answers() map[QuestionID]Answer {
 		out[k] = v.deepCopy()
 	}
 	return out
+}
+
+type AttemptSummary struct {
+	AttemptID    AttemptID
+	AssignmentID AssignmentID
+	TestID       TestID
+	UserID       UserID
+	GuestName    *string
+	Status       AttemptStatus
+	StartedAt    time.Time
+	SubmittedAt  *time.Time
+	ExpiredAt    *time.Time
+	Duration     time.Duration
+	Score        float64
+	MaxScore     float64
+	User         *UserInfo
+}
+
+type UserInfo struct {
+	ID        UserID
+	FirstName string
+	LastName  string
+}
+
+func (u UserInfo) FullName() string {
+	name := strings.TrimSpace(u.FirstName + " " + u.LastName)
+	if name == "" {
+		return fmt.Sprintf("User #%d", u.ID)
+	}
+	return name
 }
 
 func (a *Attempt) Plan() []QuestionID {
