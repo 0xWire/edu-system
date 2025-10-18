@@ -4,6 +4,7 @@ import (
 	"context"
 	"edu-system/internal/testAttempt"
 	"fmt"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -26,18 +27,12 @@ type AllowGuestsAndOwnerPolicy struct {
 	Tests testAttempt.TestReadModel
 }
 
-func (p AllowGuestsAndOwnerPolicy) CanStartAttempt(ctx context.Context, userID *testAttempt.UserID, guestName *string, testID testAttempt.TestID) error {
+func (p AllowGuestsAndOwnerPolicy) CanStartAttempt(_ context.Context, userID *testAttempt.UserID, guestName *string, _ testAttempt.TestID) error {
 	if userID != nil {
 		return nil
 	}
-	_, _, _, allowGuests, _, err := p.Tests.GetTestSettings(ctx, string(testID))
-	if err != nil {
-		return err
-	}
-	if !allowGuests {
-		return fmt.Errorf("guests not allowed")
-	}
-	if guestName == nil || *guestName == "" {
+
+	if guestName == nil || strings.TrimSpace(*guestName) == "" {
 		return fmt.Errorf("guest name required")
 	}
 	return nil

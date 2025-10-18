@@ -43,7 +43,7 @@ func (h *Handlers) Create(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, toView(*assignment, nil))
+	c.JSON(http.StatusCreated, toView(*assignment, nil, true))
 }
 
 func (h *Handlers) ListMine(c *gin.Context) {
@@ -61,7 +61,7 @@ func (h *Handlers) ListMine(c *gin.Context) {
 
 	out := make([]dto.AssignmentView, 0, len(assignments))
 	for _, a := range assignments {
-		out = append(out, toView(a, nil))
+		out = append(out, toView(a, nil, true))
 	}
 
 	c.JSON(http.StatusOK, out)
@@ -92,15 +92,23 @@ func (h *Handlers) Get(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, toView(*assignment, settings))
+	isOwner := false
+	if id, ok := userIDFromCtx(c); ok {
+		if uint(id) == assignment.OwnerID {
+			isOwner = true
+		}
+	}
+
+	c.JSON(http.StatusOK, toView(*assignment, settings, isOwner))
 }
 
-func toView(a Assignment, settings *TestSettingsSummary) dto.AssignmentView {
+func toView(a Assignment, settings *TestSettingsSummary, isOwner bool) dto.AssignmentView {
 	view := dto.AssignmentView{
 		AssignmentID: a.ID,
 		TestID:       a.TestID,
 		Title:        a.Title,
 		ShareURL:     "/take-test?assignmentId=" + a.ID,
+		IsOwner:      isOwner,
 	}
 	if settings != nil {
 		view.DurationSec = settings.DurationSec

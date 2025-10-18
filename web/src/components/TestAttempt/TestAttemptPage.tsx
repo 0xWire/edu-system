@@ -51,42 +51,6 @@ export default function TestAttemptPage({ assignmentId, guestName }: TestAttempt
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   }, []);
 
-  const policyBadges = useMemo(() => {
-    const policy = attempt?.policy;
-    if (!policy) return [];
-    const badges: string[] = [];
-    if (policy.max_attempt_time_sec > 0) {
-      badges.push(
-        t('attempt.policy.timeLimit', {
-          minutes: Math.ceil(policy.max_attempt_time_sec / 60)
-        })
-      );
-    }
-    if (policy.question_time_limit_sec > 0) {
-      badges.push(
-        t('attempt.policy.questionLimit', {
-          seconds: policy.question_time_limit_sec
-        })
-      );
-    }
-    if (policy.require_all_answered) {
-      badges.push(t('attempt.policy.requireAll'));
-    }
-    if (policy.lock_answer_on_confirm) {
-      badges.push(t('attempt.policy.lockOnConfirm'));
-    }
-    if (!policy.allow_navigation) {
-      badges.push(t('attempt.policy.noNavigation'));
-    }
-    if (policy.disable_copy) {
-      badges.push(t('attempt.policy.noCopy'));
-    }
-    if (policy.disable_browser_back) {
-      badges.push(t('attempt.policy.noBack'));
-    }
-    return badges;
-  }, [attempt?.policy, t]);
-
   const canFinish = useMemo(() => {
     if (!attempt || attempt.status !== 'active') return false;
     if (attempt.policy?.require_all_answered && attempt.cursor < attempt.total) {
@@ -576,19 +540,6 @@ export default function TestAttemptPage({ assignmentId, guestName }: TestAttempt
               )}
               {attemptSubtitle && <p className="mt-2 text-xs text-slate-400">{attemptSubtitle}</p>}
             </div>
-
-            {policyBadges.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {policyBadges.map((badge) => (
-                  <span
-                    key={badge}
-                    className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs text-slate-200 backdrop-blur"
-                  >
-                    {badge}
-                  </span>
-                ))}
-              </div>
-            )}
 
             {showLiveScore && attempt && (
               <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">

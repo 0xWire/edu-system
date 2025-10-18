@@ -185,7 +185,12 @@
     "shareDescription": "Copy the link and send it to learners. They will enter their name before starting.",
     "shareLabel": "Test link",
     "adviceTitle": "Advice",
-    "adviceText": "Join from a quiet place and keep this tab open once you begin."
+    "adviceText": "Join from a quiet place and keep this tab open once you begin.",
+    "ownerTag": "link management",
+    "ownerTitle": "Manage this assignment",
+    "ownerDescription": "Share the link with learners and monitor their attempts below.",
+    "ownerAttemptsTitle": "Attempts overview",
+    "ownerAttemptsError": "We couldn't load attempts. Try refreshing in a moment."
   },
   "attempt": {
     "tag": "test attempt",

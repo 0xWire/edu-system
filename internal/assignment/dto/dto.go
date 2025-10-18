@@ -12,4 +12,5 @@ type AssignmentView struct {
 	ShareURL          string `json:"share_url"`
 	DurationSec       int    `json:"duration_sec,omitempty"`
 	MaxAttemptTimeSec int64  `json:"max_attempt_time_sec,omitempty"`
+	IsOwner           bool   `json:"is_owner"`
 }

@@ -5,6 +5,7 @@ export interface AssignmentView {
   share_url: string;
   duration_sec?: number;
   max_attempt_time_sec?: number;
+  is_owner: boolean;
 }
 
 export interface CreateAssignmentRequest {

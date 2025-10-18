@@ -85,12 +85,9 @@ func (s *Service) StartAttempt(ctx context.Context, userID *UserID, guestName *s
 	}
 	testID := assignment.TestID
 
-	dur, from, until, allowGuests, policy, err := s.tests.GetTestSettings(ctx, string(testID))
+	dur, from, until, _, policy, err := s.tests.GetTestSettings(ctx, string(testID))
 	if err != nil {
 		return "", err
-	}
-	if userID == nil && !allowGuests {
-		return "", ErrGuestsNotAllowed
 	}
 	if err := s.policy.CanStartAttempt(ctx, userID, guestName, testID); err != nil {
 		return "", fmt.Errorf("%w: %v", ErrForbidden, err)
