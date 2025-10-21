@@ -3,6 +3,7 @@ export interface AssignmentView {
   test_id: string;
   title: string;
   share_url: string;
+  manage_url?: string;
   duration_sec?: number;
   max_attempt_time_sec?: number;
   is_owner: boolean;

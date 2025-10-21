@@ -110,6 +110,9 @@ func toView(a Assignment, settings *TestSettingsSummary, isOwner bool) dto.Assig
 		ShareURL:     "/take-test?assignmentId=" + a.ID,
 		IsOwner:      isOwner,
 	}
+	if isOwner {
+		view.ManageURL = "/dashboard/assignments/" + a.ID
+	}
 	if settings != nil {
 		view.DurationSec = settings.DurationSec
 		if settings.MaxAttemptTimeSec > 0 {

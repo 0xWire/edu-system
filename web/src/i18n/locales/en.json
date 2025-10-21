@@ -22,7 +22,8 @@
       "submitting": "Submitting…",
       "finish": "Finish attempt",
       "cancel": "Cancel",
-      "startOver": "Start over"
+      "startOver": "Start over",
+      "openStudentView": "Open student view"
     },
     "helpers": {
       "exampleName": "e.g. Jane Doe"
@@ -56,10 +57,36 @@
         "empty": "No data yet",
         "default": "Average per test"
       },
+      "assignments": {
+        "label": "Assignments",
+        "empty": "Launch a test to create one",
+        "default": "Active share links"
+      },
       "authors": {
         "label": "Authors",
         "empty": "Only you so far",
         "default": "Unique authors"
+      }
+    },
+    "home": {
+      "subtitle": "Plan your work, share tests and monitor progress from one overview.",
+      "overviewTag": "control center",
+      "overviewTitle": "Welcome back",
+      "overviewBody": "Keep an eye on ready tests, launch new assignments and revisit recent attempts in just a few steps."
+    },
+    "quickAccess": {
+      "tests": {
+        "tag": "test library",
+        "title": "Build and organise your tests",
+        "body": "Create new quizzes, edit existing ones and configure launch settings before sharing.",
+        "action": "Open test library",
+        "secondary": "Create new test"
+      },
+      "attempts": {
+        "tag": "attempts overview",
+        "title": "Track learner progress",
+        "body": "Monitor submissions, review scores and manage access for each assignment in one place.",
+        "action": "View attempts"
       }
     },
     "connection": {
@@ -134,6 +161,8 @@
       "cardTag": "attempt",
       "untitled": "Untitled assignment",
       "shareLabel": "Share link",
+      "attemptsCount": "Attempts: {count}",
+      "openManage": "Open",
       "noAttempts": "No attempts recorded yet",
       "columns": {
         "participant": "Participant",
