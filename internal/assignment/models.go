@@ -1,5 +1,7 @@
 package assignment
 
+import "encoding/json"
+
 import "time"
 
 type Assignment struct {
@@ -8,6 +10,7 @@ type Assignment struct {
 	OwnerID   uint
 	Title     string
 	CreatedAt time.Time
+	Template  json.RawMessage
 }
 
 type AssignmentDescriptor struct {

@@ -73,10 +73,11 @@ func (r *Repo) SaveAnswer(ctx context.Context, a *domain.Attempt, answered domai
 		if err := tx.Model(&attemptRow{}).
 			Where("id = ?", row.ID).
 			Updates(map[string]any{
-				"version":    row.Version,
-				"cursor":     row.Cursor,
-				"status":     row.Status,
-				"expired_at": row.ExpiredAt,
+				"version":            row.Version,
+				"cursor":             row.Cursor,
+				"status":             row.Status,
+				"expired_at":         row.ExpiredAt,
+				"question_opened_at": row.QuestionOpenedAt,
 			}).Error; err != nil {
 			return err
 		}
@@ -95,10 +96,11 @@ func (r *Repo) SaveProgress(ctx context.Context, a *domain.Attempt) error {
 	return r.db.WithContext(ctx).Model(&attemptRow{}).
 		Where("id = ?", row.ID).
 		Updates(map[string]any{
-			"version":    row.Version,
-			"cursor":     row.Cursor,
-			"status":     row.Status,
-			"expired_at": row.ExpiredAt,
+			"version":            row.Version,
+			"cursor":             row.Cursor,
+			"status":             row.Status,
+			"expired_at":         row.ExpiredAt,
+			"question_opened_at": row.QuestionOpenedAt,
 		}).Error
 }
 
@@ -166,6 +168,63 @@ func (r *Repo) ListSummariesByAssignments(ctx context.Context, assignments []dom
 	return out, nil
 }
 
+func (r *Repo) CountAttempts(ctx context.Context, filter domain.AttemptCountFilter) (domain.AttemptCounts, error) {
+	counts := domain.AttemptCounts{}
+	assignmentID := string(filter.Assignment)
+	if assignmentID == "" {
+		return counts, nil
+	}
+
+	if filter.User != nil {
+		c, err := r.countAttempts(ctx, assignmentID, func(tx *gorm.DB) *gorm.DB {
+			return tx.Where("user_id = ?", uint64(*filter.User))
+		})
+		if err != nil {
+			return counts, err
+		}
+		counts.ByUser = c
+	}
+	if filter.GuestName != nil && *filter.GuestName != "" {
+		c, err := r.countAttempts(ctx, assignmentID, func(tx *gorm.DB) *gorm.DB {
+			return tx.Where("user_id = 0").Where("guest_name = ?", *filter.GuestName)
+		})
+		if err != nil {
+			return counts, err
+		}
+		counts.ByGuest = c
+	}
+	if filter.ClientFingerprint != "" {
+		c, err := r.countAttempts(ctx, assignmentID, func(tx *gorm.DB) *gorm.DB {
+			return tx.Where("client_fingerprint = ?", filter.ClientFingerprint)
+		})
+		if err != nil {
+			return counts, err
+		}
+		counts.ByFingerprint = c
+	}
+	if filter.ClientIP != "" {
+		c, err := r.countAttempts(ctx, assignmentID, func(tx *gorm.DB) *gorm.DB {
+			return tx.Where("client_ip = ?", filter.ClientIP)
+		})
+		if err != nil {
+			return counts, err
+		}
+		counts.ByIP = c
+	}
+	return counts, nil
+}
+
+func (r *Repo) countAttempts(ctx context.Context, assignmentID string, where func(*gorm.DB) *gorm.DB) (int, error) {
+	var total int64
+	base := r.db.WithContext(ctx).Model(&attemptRow{}).
+		Where("assignment_id = ?", assignmentID).
+		Where("status <> ?", string(domain.StatusCanceled))
+	if err := where(base).Count(&total).Error; err != nil {
+		return 0, err
+	}
+	return int(total), nil
+}
+
 type attemptRow struct {
 	ID           string `gorm:"primaryKey;type:varchar(36)"`
 	CreatedAt    time.Time
@@ -184,8 +243,12 @@ type attemptRow struct {
 	Score        float64 `gorm:"not null;default:0"`
 	MaxScore     float64 `gorm:"not null;default:0"`
 
-	OrderJSON json.RawMessage `gorm:"type:json;not null"`
-	Cursor    int             `gorm:"not null;default:0"`
+	ClientIP          string `gorm:"type:varchar(64)"`
+	ClientFingerprint string `gorm:"type:varchar(128)"`
+	QuestionOpenedAt  *time.Time
+	PolicyJSON        json.RawMessage `gorm:"type:json;not null;default:'{}'"`
+	OrderJSON         json.RawMessage `gorm:"type:json;not null"`
+	Cursor            int             `gorm:"not null;default:0"`
 
 	Answers []answerRow `gorm:"foreignKey:AttemptID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }
@@ -207,6 +270,12 @@ func (answerRow) TableName() string { return "selected_answers" }
 
 func toRow(a *domain.Attempt) (*attemptRow, error) {
 	score, max := a.Score()
+
+	policy := a.Policy()
+	policyJSON, err := json.Marshal(policy)
+	if err != nil {
+		return nil, err
+	}
 
 	order := aOrder(a)
 	orderJSON, err := json.Marshal(order)
@@ -244,30 +313,53 @@ func toRow(a *domain.Attempt) (*attemptRow, error) {
 		t := a.ExpiredAt().UTC()
 		expired = &t
 	}
+	var openedAt *time.Time
+	if ts := a.CurrentQuestionOpenedAt(); ts != nil {
+		t := ts.UTC()
+		openedAt = &t
+	}
 
 	return &attemptRow{
-		ID:           string(a.ID()),
-		AssignmentID: string(a.Assignment()),
-		TestID:       string(a.Test()),
-		UserID:       uint64(a.User()),
-		GuestName:    gname,
-		StartedAt:    a.StartedAt(),
-		SubmittedAt:  submitted,
-		ExpiredAt:    expired,
-		Status:       string(a.Status()),
-		DurationSec:  int(a.Duration() / time.Second),
-		Version:      a.Version(),
-		Seed:         a.Seed(),
-		Score:        score,
-		MaxScore:     max,
+		ID:                string(a.ID()),
+		AssignmentID:      string(a.Assignment()),
+		TestID:            string(a.Test()),
+		UserID:            uint64(a.User()),
+		GuestName:         gname,
+		StartedAt:         a.StartedAt(),
+		SubmittedAt:       submitted,
+		ExpiredAt:         expired,
+		Status:            string(a.Status()),
+		DurationSec:       int(a.Duration() / time.Second),
+		Version:           a.Version(),
+		Seed:              a.Seed(),
+		Score:             score,
+		MaxScore:          max,
+		ClientIP:          a.ClientIP(),
+		ClientFingerprint: a.ClientFingerprint(),
+		QuestionOpenedAt:  openedAt,
 
-		OrderJSON: orderJSON,
-		Cursor:    a.Cursor(),
-		Answers:   arows,
+		PolicyJSON: policyJSON,
+		OrderJSON:  orderJSON,
+		Cursor:     a.Cursor(),
+		Answers:    arows,
 	}, nil
 }
 
 func toDomain(r *attemptRow) (*domain.Attempt, error) {
+	var policy domain.AttemptPolicy
+	if len(r.PolicyJSON) > 0 {
+		if err := json.Unmarshal(r.PolicyJSON, &policy); err != nil {
+			return nil, err
+		}
+	}
+	if len(r.PolicyJSON) == 0 || string(r.PolicyJSON) == "{}" {
+		policy.ShuffleQuestions = true
+		policy.ShuffleAnswers = true
+	}
+	if policy.MaxAttemptTime == 0 && r.DurationSec > 0 {
+		policy.MaxAttemptTime = time.Duration(r.DurationSec) * time.Second
+	}
+
 	var ids []string
 	if err := json.Unmarshal(r.OrderJSON, &ids); err != nil {
 		return nil, err
@@ -299,7 +391,7 @@ func toDomain(r *attemptRow) (*domain.Attempt, error) {
 		domain.UserID(r.UserID),
 		r.GuestName,
 		r.StartedAt,
-		time.Duration(r.DurationSec)*time.Second,
+		policy,
 		r.Seed,
 		plan,
 		r.Cursor,
@@ -310,6 +402,9 @@ func toDomain(r *attemptRow) (*domain.Attempt, error) {
 		r.ExpiredAt,
 		r.Score,
 		r.MaxScore,
+		r.ClientIP,
+		r.ClientFingerprint,
+		r.QuestionOpenedAt,
 	)
 	if err != nil {
 		return nil, err

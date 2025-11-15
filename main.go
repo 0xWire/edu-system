@@ -68,7 +68,7 @@ func main() {
 	server.SetupRoutes(
 		func(v1 gin.IRouter) { auth.RegisterRoutes(v1, authHandler, jwtMW) },
 		func(v1 gin.IRouter) { test.RegisterRoutes(v1, testHandler, jwtMW) },
-		func(v1 gin.IRouter) { assignment.RegisterRoutes(v1, assignmentHandler, jwtMW) },
+		func(v1 gin.IRouter) { assignment.RegisterRoutes(v1, assignmentHandler, jwtMW, optionalJWTMW) },
 		func(v1 gin.IRouter) { testAttempt.RegisterRoutes(v1, testAttemptHandler, optionalJWTMW, jwtMW) },
 	)
 

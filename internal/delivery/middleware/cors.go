@@ -16,7 +16,12 @@ func CORS() gin.HandlerFunc {
 		log.Printf("CORS middleware: %s %s from origin: %s", method, path, origin)
 
 		// Set CORS headers for all requests
-		c.Header("Access-Control-Allow-Origin", "*")
+		if origin != "" {
+			c.Header("Access-Control-Allow-Origin", origin)
+			c.Header("Vary", "Origin")
+		} else {
+			c.Header("Access-Control-Allow-Origin", "*")
+		}
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization, X-Requested-With")
 		c.Header("Access-Control-Allow-Credentials", "true")

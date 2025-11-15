@@ -1,13 +1,13 @@
 import api from '@/lib/api';
 import {
   AttemptView,
-  QuestionView,
   AnsweredView,
   StartAttemptRequest,
   SubmitAnswerRequest,
   SubmitAttemptRequest,
   CancelAttemptRequest,
-  AttemptSummary
+  AttemptSummary,
+  NextQuestionResponse
 } from '@/types/testAttempt';
 
 export class TestAttemptService {
@@ -23,9 +23,16 @@ export class TestAttemptService {
   }
 
   // Get the next question in an attempt
-  static async getNextQuestion(attemptId: string): Promise<{ attempt: AttemptView, question: QuestionView }> {
+  static async getNextQuestion(attemptId: string): Promise<NextQuestionResponse> {
     try {
       const response = await api.get(`/api/v1/attempts/${attemptId}/question`);
+      if (response.data?.done) {
+        return {
+          attempt: response.data.attempt ?? null,
+          question: null,
+          done: true
+        };
+      }
       return response.data;
     } catch (error) {
       console.error('Failed to fetch next question:', error);

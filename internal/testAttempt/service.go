@@ -38,8 +38,13 @@ type QuestionForScoring struct {
 	CorrectJSON []byte
 }
 
+type AttemptMetadata struct {
+	ClientIP    string
+	Fingerprint string
+}
+
 type TestReadModel interface {
-	GetTestSettings(ctx context.Context, testID string) (durationSec int, availableFrom, availableUntil *time.Time, allowGuests bool, err error)
+	GetTestSettings(ctx context.Context, testID string) (durationSec int, availableFrom, availableUntil *time.Time, allowGuests bool, policy AttemptPolicy, err error)
 	ListVisibleQuestions(ctx context.Context, testID string) ([]VisibleQuestion, error)
 	ListQuestionsForScoring(ctx context.Context, testID string) ([]QuestionForScoring, error)
 }
@@ -49,10 +54,80 @@ type AssignmentReadModel interface {
 }
 
 type AssignmentDescriptor struct {
-	ID      AssignmentID
-	TestID  TestID
-	OwnerID UserID
-	Title   string
+	ID       AssignmentID
+	TestID   TestID
+	OwnerID  UserID
+	Title    string
+	Template *AssignmentTemplate
+}
+
+type AssignmentTemplate struct {
+	TestID         TestID
+	Title          string
+	Description    string
+	DurationSec    int
+	AllowGuests    bool
+	AvailableFrom  *time.Time
+	AvailableUntil *time.Time
+	Policy         AttemptPolicy
+	Questions      []TemplateQuestion
+}
+
+type TemplateQuestion struct {
+	ID            QuestionID
+	QuestionText  string
+	ImageURL      string
+	CorrectOption int
+	Options       []TemplateOption
+}
+
+type TemplateOption struct {
+	ID         string
+	OptionText string
+	ImageURL   string
+}
+
+func (tpl *AssignmentTemplate) VisibleQuestions() []VisibleQuestion {
+	if tpl == nil {
+		return nil
+	}
+	out := make([]VisibleQuestion, 0, len(tpl.Questions))
+	for _, q := range tpl.Questions {
+		opts := make([]VisibleOption, 0, len(q.Options))
+		for _, o := range q.Options {
+			opts = append(opts, VisibleOption{
+				ID:         o.ID,
+				OptionText: o.OptionText,
+				ImageURL:   o.ImageURL,
+			})
+		}
+		out = append(out, VisibleQuestion{
+			ID:           string(q.ID),
+			QuestionText: q.QuestionText,
+			ImageURL:     q.ImageURL,
+			Options:      opts,
+		})
+	}
+	return out
+}
+
+func (tpl *AssignmentTemplate) QuestionsForScoring() []QuestionForScoring {
+	if tpl == nil {
+		return nil
+	}
+	out := make([]QuestionForScoring, 0, len(tpl.Questions))
+	for _, q := range tpl.Questions {
+		payload, _ := json.Marshal(map[string]any{
+			"selected": []int{q.CorrectOption},
+		})
+		out = append(out, QuestionForScoring{
+			ID:          string(q.ID),
+			Type:        "single",
+			Weight:      1.0,
+			CorrectJSON: payload,
+		})
+	}
+	return out
 }
 
 type UserDirectory interface {
@@ -73,24 +148,38 @@ func NewTestAttemptService(repo Repository, tests TestReadModel, assignments Ass
 	return &Service{repo: repo, tests: tests, assignments: assignments, tx: tx, clock: clock, policy: policy, users: users}
 }
 
-func (s *Service) StartAttempt(ctx context.Context, userID *UserID, guestName *string, assignmentID AssignmentID) (AttemptID, error) {
+func (s *Service) StartAttempt(ctx context.Context, userID *UserID, guestName *string, assignmentID AssignmentID, meta AttemptMetadata) (AttemptID, error) {
 	assignment, err := s.assignments.GetAssignment(ctx, assignmentID)
 	if err != nil {
 		return "", err
 	}
 	testID := assignment.TestID
 
-	dur, from, until, allowGuests, err := s.tests.GetTestSettings(ctx, string(testID))
-	if err != nil {
-		return "", err
-	}
-	if userID == nil && !allowGuests {
-		return "", ErrGuestsNotAllowed
+	template := assignment.Template
+
+	var (
+		durationSec int
+		from        *time.Time
+		until       *time.Time
+		policy      AttemptPolicy
+	)
+
+	if template != nil {
+		durationSec = template.DurationSec
+		from = template.AvailableFrom
+		until = template.AvailableUntil
+		policy = template.Policy
+	} else {
+		var allowGuests bool
+		durationSec, from, until, allowGuests, policy, err = s.tests.GetTestSettings(ctx, string(testID))
+		if err != nil {
+			return "", err
+		}
+		_ = allowGuests
 	}
 	if err := s.policy.CanStartAttempt(ctx, userID, guestName, testID); err != nil {
 		return "", fmt.Errorf("%w: %v", ErrForbidden, err)
 	}
-
 	now := s.clock.Now()
 	if from != nil && now.Before(*from) {
 		return "", errors.New("test not yet available")
@@ -105,18 +194,67 @@ func (s *Service) StartAttempt(ctx context.Context, userID *UserID, guestName *s
 		}
 	}
 
+	if policy.MaxAttempts > 0 {
+		counts, err := s.repo.CountAttempts(ctx, AttemptCountFilter{
+			Assignment:        assignmentID,
+			User:              userID,
+			GuestName:         guestName,
+			ClientIP:          meta.ClientIP,
+			ClientFingerprint: meta.Fingerprint,
+		})
+		if err != nil {
+			return "", err
+		}
+		limit := policy.MaxAttempts
+		if userID != nil && counts.ByUser >= limit {
+			return "", ErrMaxAttempts
+		}
+		if userID == nil {
+			if guestName != nil && counts.ByGuest >= limit {
+				return "", ErrMaxAttempts
+			}
+		}
+		if meta.Fingerprint != "" && counts.ByFingerprint >= limit {
+			return "", ErrMaxAttempts
+		}
+		if meta.ClientIP != "" && counts.ByIP >= limit {
+			return "", ErrMaxAttempts
+		}
+	}
+
 	seed := now.UnixNano() ^ int64(rand.Int())
 	var uid UserID
 	if userID != nil {
 		uid = *userID
 	}
-	a := NewAttempt(NewAttemptID(), assignmentID, testID, uid, guestName, now, time.Duration(dur)*time.Second, seed)
-
-	vis, err := s.tests.ListVisibleQuestions(ctx, string(testID))
-	if err != nil {
-		return "", err
+	if policy.MaxAttemptTime <= 0 && durationSec > 0 {
+		policy.MaxAttemptTime = time.Duration(durationSec) * time.Second
 	}
-	order := shuffleQuestionIDs(vis, seed)
+	var vis []VisibleQuestion
+	if template != nil {
+		vis = template.VisibleQuestions()
+	} else {
+		vis, err = s.tests.ListVisibleQuestions(ctx, string(testID))
+		if err != nil {
+			return "", err
+		}
+	}
+
+	var order []QuestionID
+	if policy.ShuffleQuestions {
+		order = shuffleQuestionIDs(vis, seed)
+	} else {
+		order = make([]QuestionID, 0, len(vis))
+		for _, q := range vis {
+			order = append(order, QuestionID(q.ID))
+		}
+	}
+	if policy.MaxQuestions > 0 && len(order) > policy.MaxQuestions {
+		order = order[:policy.MaxQuestions]
+	}
+
+	a := NewAttempt(NewAttemptID(), assignmentID, testID, uid, guestName, now, policy, seed, meta.ClientIP, meta.Fingerprint)
+
 	a.InitializePlan(order)
 
 	return s.repo.Create(ctx, a)
@@ -131,14 +269,27 @@ func (s *Service) NextQuestion(ctx context.Context, requester *UserID, id Attemp
 		return AttemptView{}, QuestionView{}, fmt.Errorf("%w: %v", ErrForbidden, err)
 	}
 
-	qid, err := a.NextQuestionID(s.clock.Now())
-	if err != nil {
-		return attemptToView(a, s.clock.Now()), QuestionView{}, err
-	}
-
-	vis, err := s.tests.ListVisibleQuestions(ctx, string(a.Test()))
+	now := s.clock.Now()
+	descriptor, err := s.assignments.GetAssignment(ctx, a.Assignment())
 	if err != nil {
 		return AttemptView{}, QuestionView{}, err
+	}
+	qid, err := a.NextQuestionID(now)
+	if err != nil {
+		if errors.Is(err, ErrQuestionTimeLimit) {
+			_ = s.repo.SaveProgress(ctx, a)
+		}
+		return attemptToView(a, now), QuestionView{}, err
+	}
+
+	var vis []VisibleQuestion
+	if descriptor.Template != nil {
+		vis = descriptor.Template.VisibleQuestions()
+	} else {
+		vis, err = s.tests.ListVisibleQuestions(ctx, string(a.Test()))
+		if err != nil {
+			return AttemptView{}, QuestionView{}, err
+		}
 	}
 	m := make(map[string]VisibleQuestion, len(vis))
 	for _, q := range vis {
@@ -148,9 +299,15 @@ func (s *Service) NextQuestion(ctx context.Context, requester *UserID, id Attemp
 	if !ok {
 		return AttemptView{}, QuestionView{}, errors.New("question not found in test")
 	}
-	options := shuffleOptions(vq.Options, a.Seed(), a.Cursor())
+	options := vq.Options
+	if a.Policy().ShuffleAnswers {
+		options = shuffleOptions(vq.Options, a.Seed(), a.Cursor())
+	}
+	if err := s.repo.SaveProgress(ctx, a); err != nil {
+		return AttemptView{}, QuestionView{}, err
+	}
 
-	return attemptToView(a, s.clock.Now()), makeQuestionView(vq, options), nil
+	return attemptToView(a, now), makeQuestionView(vq, options), nil
 }
 
 func (s *Service) AnswerCurrent(ctx context.Context, requester *UserID, id AttemptID, version int, payload AnswerPayload) (AttemptView, AnsweredView, error) {
@@ -161,8 +318,12 @@ func (s *Service) AnswerCurrent(ctx context.Context, requester *UserID, id Attem
 	if err := s.policy.CanModifyAttempt(ctx, requester, a); err != nil {
 		return AttemptView{}, AnsweredView{}, fmt.Errorf("%w: %v", ErrForbidden, err)
 	}
-	newVersion, qid, err := a.AnswerCurrent(version, s.clock.Now(), payload)
+	now := s.clock.Now()
+	newVersion, qid, err := a.AnswerCurrent(version, now, payload)
 	if err != nil {
+		if errors.Is(err, ErrQuestionTimeLimit) {
+			_ = s.repo.SaveProgress(ctx, a)
+		}
 		return AttemptView{}, AnsweredView{}, err
 	}
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
@@ -171,7 +332,7 @@ func (s *Service) AnswerCurrent(ctx context.Context, requester *UserID, id Attem
 	if err != nil {
 		return AttemptView{}, AnsweredView{}, err
 	}
-	av := attemptToView(a, s.clock.Now())
+	av := attemptToView(a, now)
 	av.Version = newVersion
 	return av, AnsweredView{QuestionID: string(qid)}, nil
 }
@@ -225,9 +386,18 @@ func (s *Service) Submit(ctx context.Context, requester *UserID, id AttemptID, v
 	if err := s.policy.CanModifyAttempt(ctx, requester, a); err != nil {
 		return AttemptView{}, fmt.Errorf("%w: %v", ErrForbidden, err)
 	}
-	qs, err := s.tests.ListQuestionsForScoring(ctx, string(a.Test()))
+	descriptor, err := s.assignments.GetAssignment(ctx, a.Assignment())
 	if err != nil {
 		return AttemptView{}, err
+	}
+	var qs []QuestionForScoring
+	if descriptor.Template != nil {
+		qs = descriptor.Template.QuestionsForScoring()
+	} else {
+		qs, err = s.tests.ListQuestionsForScoring(ctx, string(a.Test()))
+		if err != nil {
+			return AttemptView{}, err
+		}
 	}
 	score, max, err := simpleScore(qs, a.Answers())
 	if err != nil {
@@ -265,14 +435,30 @@ func (s *Service) Cancel(ctx context.Context, requester *UserID, id AttemptID, v
 }
 
 type AttemptView struct {
-	AttemptID    string `json:"attempt_id"`
-	AssignmentID string `json:"assignment_id"`
-	Status       string `json:"status"`
-	Version      int    `json:"version"`
-	TimeLeftSec  int64  `json:"time_left_sec"`
-	Total        int    `json:"total"`
-	Cursor       int    `json:"cursor"`
-	GuestName    string `json:"guest_name,omitempty"`
+	AttemptID    string            `json:"attempt_id"`
+	AssignmentID string            `json:"assignment_id"`
+	Status       string            `json:"status"`
+	Version      int               `json:"version"`
+	TimeLeftSec  int64             `json:"time_left_sec"`
+	Total        int               `json:"total"`
+	Cursor       int               `json:"cursor"`
+	GuestName    string            `json:"guest_name,omitempty"`
+	Policy       AttemptPolicyView `json:"policy"`
+}
+
+type AttemptPolicyView struct {
+	ShuffleQuestions     bool   `json:"shuffle_questions"`
+	ShuffleAnswers       bool   `json:"shuffle_answers"`
+	RequireAllAnswered   bool   `json:"require_all_answered"`
+	LockAnswerOnConfirm  bool   `json:"lock_answer_on_confirm"`
+	DisableCopy          bool   `json:"disable_copy"`
+	DisableBrowserBack   bool   `json:"disable_browser_back"`
+	ShowElapsedTime      bool   `json:"show_elapsed_time"`
+	AllowNavigation      bool   `json:"allow_navigation"`
+	QuestionTimeLimitSec int64  `json:"question_time_limit_sec"`
+	MaxAttemptTimeSec    int64  `json:"max_attempt_time_sec"`
+	RevealScoreMode      string `json:"reveal_score_mode"`
+	RevealSolutions      bool   `json:"reveal_solutions"`
 }
 
 type QuestionView struct {
@@ -310,7 +496,30 @@ func attemptToView(a *Attempt, now time.Time) AttemptView {
 	if a.GuestName() != nil {
 		av.GuestName = *a.GuestName()
 	}
+	av.Policy = toPolicyView(a.Policy())
 	return av
+}
+
+func toPolicyView(p AttemptPolicy) AttemptPolicyView {
+	view := AttemptPolicyView{
+		ShuffleQuestions:    p.ShuffleQuestions,
+		ShuffleAnswers:      p.ShuffleAnswers,
+		RequireAllAnswered:  p.RequireAllAnswered,
+		LockAnswerOnConfirm: p.LockAnswerOnConfirm,
+		DisableCopy:         p.DisableCopy,
+		DisableBrowserBack:  p.DisableBrowserBack,
+		ShowElapsedTime:     p.ShowElapsedTime,
+		AllowNavigation:     p.AllowNavigation,
+		RevealScoreMode:     string(p.RevealScoreMode),
+		RevealSolutions:     p.RevealSolutions,
+	}
+	if p.QuestionTimeLimit > 0 {
+		view.QuestionTimeLimitSec = int64(p.QuestionTimeLimit / time.Second)
+	}
+	if p.MaxAttemptTime > 0 {
+		view.MaxAttemptTimeSec = int64(p.MaxAttemptTime / time.Second)
+	}
+	return view
 }
 
 func makeQuestionView(v VisibleQuestion, opts []VisibleOption) QuestionView {

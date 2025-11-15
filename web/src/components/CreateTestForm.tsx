@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { TestService } from '@/services/test';
 import { CreateTestRequest, QuestionFormData, AnswerFormData } from '@/types/test';
@@ -8,6 +8,14 @@ import { CreateTestRequest, QuestionFormData, AnswerFormData } from '@/types/tes
 interface CreateTestFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
+  initialFormData?: {
+    title: string;
+    description: string;
+    questions: QuestionFormData[];
+  };
+  initialAuthor?: string;
+  mode?: 'create' | 'edit';
+  testId?: string;
 }
 
 const createEmptyOption = (): AnswerFormData => ({
@@ -33,29 +41,80 @@ async function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-export default function CreateTestForm({ onSuccess, onCancel }: CreateTestFormProps) {
+export default function CreateTestForm({
+  onSuccess,
+  onCancel,
+  initialFormData,
+  initialAuthor,
+  mode = 'create',
+  testId
+}: CreateTestFormProps) {
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isEditMode = mode === 'edit';
 
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    questions: [createEmptyQuestion()]
-  });
+  const buildInitialState = () => {
+    if (!initialFormData) {
+      return {
+        title: '',
+        description: '',
+        questions: [createEmptyQuestion()]
+      };
+    }
+    return {
+      title: initialFormData.title,
+      description: initialFormData.description,
+      questions: initialFormData.questions.map((question) => ({
+        ...question,
+        options: question.options.map((opt) => ({
+          ...opt,
+          image_preview: opt.image_preview ?? opt.image_url ?? ''
+        })),
+        image_preview: question.image_preview ?? question.image_url ?? ''
+      }))
+    };
+  };
+
+  const [formData, setFormData] = useState(buildInitialState);
+
+  useEffect(() => {
+    if (initialFormData) {
+      setFormData(buildInitialState());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(initialFormData)]);
 
   const resetState = () => {
-    setFormData({
-      title: '',
-      description: '',
-      questions: [createEmptyQuestion()]
-    });
+    setFormData(buildInitialState());
   };
+
+  const authorDisplay = (() => {
+    if (initialAuthor && initialAuthor.trim().length > 0) {
+      return initialAuthor;
+    }
+    const fullName = `${user?.first_name ?? ''} ${user?.last_name ?? ''}`.trim();
+    if (fullName.length > 0) {
+      return fullName;
+    }
+    return user?.email ?? '';
+  })();
+
+  const headerTag = isEditMode ? 'Edit test' : 'Create test';
+  const headerTitle = isEditMode ? 'Update your assessment' : 'Design a new assessment';
+  const headerSubtitle = isEditMode
+    ? 'Review every question, adjust the correct answers and keep existing assignments unchanged.'
+    : 'Add questions, upload supporting images and configure answer options. All media is stored inline with the test for quick sharing.';
+  const submitLabel = isEditMode ? 'Save changes' : 'Create test';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) {
+    if (!user && !isEditMode) {
       setError('You must be logged in to create a test');
+      return;
+    }
+    if (isEditMode && !testId) {
+      setError('Test identifier is missing');
       return;
     }
 
@@ -78,33 +137,55 @@ export default function CreateTestForm({ onSuccess, onCancel }: CreateTestFormPr
     setError(null);
 
     try {
-      const testData: CreateTestRequest = {
-        author: `${user.first_name} ${user.last_name}`.trim() || user.email,
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        questions: formData.questions.map((q) => ({
-          id: '',
-          question_text: q.question_text.trim(),
-          options: q.options.map((opt, optIndex) => ({
-            answer: optIndex,
-            answer_text: opt.answer_text.trim(),
-            image_url: opt.image_url || undefined
-          })),
-          correct_option: q.correct_option,
-          image_url: q.image_url || undefined
-        }))
-      };
-
-      const response = await TestService.createTest(testData);
-
-      if (response.success) {
-        resetState();
-        onSuccess?.();
+      if (isEditMode) {
+        const result = await TestService.updateTest(testId!, {
+          title: formData.title.trim(),
+          description: formData.description.trim(),
+          questions: formData.questions.map((q) => ({
+            question_text: q.question_text.trim(),
+            correct_option: q.correct_option,
+            image_url: q.image_url || undefined,
+            options: q.options.map((opt, optIndex) => ({
+              answer_text: opt.answer_text.trim(),
+              image_url: opt.image_url || undefined,
+              answer: optIndex
+            }))
+          }))
+        });
+        if (result.success) {
+          onSuccess?.();
+        } else {
+          setError(result.message || 'Failed to update test');
+        }
       } else {
-        setError(response.error || 'Failed to create test');
+        const testData: CreateTestRequest = {
+          author: `${user!.first_name} ${user!.last_name}`.trim() || user!.email,
+          title: formData.title.trim(),
+          description: formData.description.trim(),
+          questions: formData.questions.map((q) => ({
+            id: '',
+            question_text: q.question_text.trim(),
+            options: q.options.map((opt, optIndex) => ({
+              answer: optIndex,
+              answer_text: opt.answer_text.trim(),
+              image_url: opt.image_url || undefined
+            })),
+            correct_option: q.correct_option,
+            image_url: q.image_url || undefined
+          }))
+        };
+
+        const response = await TestService.createTest(testData);
+
+        if (response.success) {
+          resetState();
+          onSuccess?.();
+        } else {
+          setError(response.error || 'Failed to create test');
+        }
       }
     } catch (err) {
-      console.error('Failed to create test', err);
+      console.error('Failed to create or update test', err);
       setError('An unexpected error occurred');
     } finally {
       setIsSubmitting(false);
@@ -223,11 +304,9 @@ export default function CreateTestForm({ onSuccess, onCancel }: CreateTestFormPr
   return (
     <section className="w-full max-w-5xl space-y-6 rounded-3xl border border-white/10 bg-slate-950/80 p-8 text-slate-100 shadow-[0_40px_120px_-60px_rgba(15,23,42,0.9)] backdrop-blur">
       <header className="space-y-2">
-        <p className="text-xs uppercase tracking-[0.35em] text-indigo-300">Create test</p>
-        <h1 className="text-3xl font-semibold text-white">Design a new assessment</h1>
-        <p className="max-w-2xl text-sm text-slate-300">
-          Add questions, upload supporting images and configure answer options. All media is stored inline with the test for quick sharing.
-        </p>
+        <p className="text-xs uppercase tracking-[0.35em] text-indigo-300">{headerTag}</p>
+        <h1 className="text-3xl font-semibold text-white">{headerTitle}</h1>
+        <p className="max-w-2xl text-sm text-slate-300">{headerSubtitle}</p>
       </header>
 
       {error && (
@@ -252,7 +331,7 @@ export default function CreateTestForm({ onSuccess, onCancel }: CreateTestFormPr
             <span className="text-xs uppercase tracking-[0.3em] text-indigo-200">Author</span>
             <input
               type="text"
-              value={`${user?.first_name ?? ''} ${user?.last_name ?? ''}`.trim() || user?.email || ''}
+              value={authorDisplay}
               readOnly
               className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200"
             />
@@ -467,7 +546,7 @@ export default function CreateTestForm({ onSuccess, onCancel }: CreateTestFormPr
             disabled={isSubmitting}
             className="rounded-2xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isSubmitting ? 'Saving...' : 'Create test'}
+            {isSubmitting ? 'Saving...' : submitLabel}
           </button>
         </div>
       </form>

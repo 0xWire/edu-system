@@ -13,7 +13,6 @@
       "backToDashboard": "Back to dashboard",
       "startTest": "Start test",
       "retry": "Try again",
-      "openTest": "Open test",
       "share": "Share link",
       "newTest": "New test",
       "copyLink": "Copy link",
@@ -23,7 +22,8 @@
       "submitting": "Submitting…",
       "finish": "Finish attempt",
       "cancel": "Cancel",
-      "startOver": "Start over"
+      "startOver": "Start over",
+      "openStudentView": "Open student view"
     },
     "helpers": {
       "exampleName": "e.g. Jane Doe"
@@ -57,10 +57,36 @@
         "empty": "No data yet",
         "default": "Average per test"
       },
+      "assignments": {
+        "label": "Assignments",
+        "empty": "Launch a test to create one",
+        "default": "Active share links"
+      },
       "authors": {
         "label": "Authors",
         "empty": "Only you so far",
         "default": "Unique authors"
+      }
+    },
+    "home": {
+      "subtitle": "Plan your work, share tests and monitor progress from one overview.",
+      "overviewTag": "control center",
+      "overviewTitle": "Welcome back",
+      "overviewBody": "Keep an eye on ready tests, launch new assignments and revisit recent attempts in just a few steps."
+    },
+    "quickAccess": {
+      "tests": {
+        "tag": "test library",
+        "title": "Build and organise your tests",
+        "body": "Create new quizzes, edit existing ones and configure launch settings before sharing.",
+        "action": "Open test library",
+        "secondary": "Create new test"
+      },
+      "attempts": {
+        "tag": "attempts overview",
+        "title": "Track learner progress",
+        "body": "Monitor submissions, review scores and manage access for each assignment in one place.",
+        "action": "View attempts"
       }
     },
     "connection": {
@@ -84,6 +110,63 @@
       "unknownAuthor": "Not specified",
       "ready": "Ready to launch"
     },
+    "testsDetail": {
+      "tag": "test details",
+      "error": "We couldn't load this test. Try again later.",
+      "backToTests": "Back to tests",
+      "viewAction": "View details",
+      "editAction": "Edit test",
+      "launchAction": "Launch test",
+      "durationNone": "No time limit",
+      "durationMinutes": "Duration: {value} min",
+      "guestsAllowed": "Guests allowed",
+      "guestsDisabled": "Guests disabled",
+      "questionLabel": "Question {index}",
+      "questionImageAlt": "Question {index} illustration",
+      "optionImageAlt": "Answer {option} for question {index}",
+      "correctBadge": "Correct"
+    },
+    "launch": {
+      "tag": "launch setup",
+      "title": "Configure attempt for {name}",
+      "subtitle": "Adjust the experience before sharing the link with learners.",
+      "sections": {
+        "general": "General settings",
+        "policy": "Attempt policy"
+      },
+      "fields": {
+        "duration": "Duration (minutes, 0 = unlimited)",
+        "maxAttempts": "Attempts per participant (0 = unlimited)",
+        "maxQuestions": "Questions in this attempt (0 = all)",
+        "questionTime": "Per-question time limit (seconds, 0 = unlimited)",
+        "attemptTime": "Overall time limit (minutes, 0 = unlimited)",
+        "allowGuests": "Allow guest access",
+        "shuffleQuestions": "Shuffle question order",
+        "shuffleAnswers": "Shuffle answer options",
+        "requireAll": "Require all questions answered",
+        "lockOnConfirm": "Lock answer after submission",
+        "disableCopy": "Disable copy / paste",
+        "disableBack": "Disable browser back button",
+        "showElapsed": "Show elapsed time",
+        "allowNavigation": "Allow navigation between questions",
+        "revealSolutions": "Reveal solutions after submission",
+        "revealScoreMode": "Score visibility"
+      },
+      "scoreModes": {
+        "never": "Never",
+        "after_submit": "After submission",
+        "always": "During attempt"
+      },
+      "actions": {
+        "cancel": "Cancel",
+        "start": "Start & share",
+        "processing": "Starting…"
+      },
+      "errors": {
+        "update": "We couldn't update the test settings. Try again.",
+        "create": "We couldn't create a share link. Try again."
+      }
+    },
     "assignments": {
       "title": "Test attempts",
       "subtitle": "Generated links and learner results appear here.",
@@ -94,6 +177,8 @@
       "cardTag": "attempt",
       "untitled": "Untitled assignment",
       "shareLabel": "Share link",
+      "attemptsCount": "Attempts: {count}",
+      "openManage": "Open",
       "noAttempts": "No attempts recorded yet",
       "columns": {
         "participant": "Participant",
@@ -125,34 +210,39 @@
     "subtitle": "Craft questions, answers and supporting images. Once saved you will return to the dashboard."
   },
   "takeTest": {
-    "invitationGuest": "Guest mode is perfect for open attempts without sign-in — just add a name so we know who is taking the test.",
-    "invitationAccount": "Use your account to keep detailed stats and save progress.",
     "missingTag": "navigation error",
     "missingTitle": "No test selected",
     "missingDescription": "It looks like you opened the test page without specifying an identifier. Return to the dashboard and pick a test.",
     "ctaDashboard": "Open dashboard",
-    "setupTag": "test setup",
-    "setupTitle": "How would you like to start?",
-    "setupDescription": "Choose the mode that fits you best. Guest mode only needs a name while signed-in attempts will link results to your profile.",
-    "accountOption": "Take the test with my account",
-    "accountDescription": "Keeps access to your profile and attempt history.",
-    "guestOption": "Take the test as a guest",
-    "guestDescription": "Share this link with learners who don't need to sign in.",
-    "tipTag": "tip",
-    "tipText": "Guest attempts don't save detailed analytics. Switch to your account if you need full progress tracking.",
-    "guestLabel": "Guest name",
+    "setupTag": "get ready",
+    "setupTitle": "Enter your name to start",
+    "setupDescription": "Add your first and last name so we can attach the attempt to you.",
+    "detailsTag": "test details",
+    "timeLimitLabel": "Time allowed",
+    "timeLimitNone": "No time limit for this test",
+    "firstNameLabel": "First name",
+    "lastNameLabel": "Last name",
+    "nameHelp": "Your instructor will see this name on the results page.",
+    "tipTag": "before you start",
+    "tipText": "Check your connection and make sure you have enough time to finish.",
     "shareTag": "share the test",
     "shareTitle": "Invite participants",
-    "shareDescription": "Copy the link and send it to learners. Everyone can choose the mode that works best.",
+    "shareDescription": "Copy the link and send it to learners. They will enter their name before starting.",
     "shareLabel": "Test link",
     "adviceTitle": "Advice",
-    "adviceText": "If the test is timed, remind participants ahead of time and make sure they have a stable connection."
+    "adviceText": "Join from a quiet place and keep this tab open once you begin.",
+    "ownerTag": "link management",
+    "ownerTitle": "Manage this assignment",
+    "ownerDescription": "Share the link with learners and monitor their attempts below.",
+    "ownerAttemptsTitle": "Attempts overview",
+    "ownerAttemptsError": "We couldn't load attempts. Try refreshing in a moment."
   },
   "attempt": {
     "tag": "test attempt",
     "guestLabel": "Guest mode: {name}",
     "subtitleSubmitted": "Attempt submitted for review",
     "subtitleCancelled": "Attempt cancelled",
+    "subtitleExpired": "Time for the attempt has expired",
     "subtitleActive": "Do not close this page until you finish.",
     "questionProgress": "Question {current} of {total}",
     "errorTitle": "Could not start the test",
@@ -160,23 +250,47 @@
     "answerError": "We couldn't submit your answer. Please try again.",
     "submitError": "We couldn't submit the test. Please try again.",
     "cancelError": "We couldn't cancel the attempt. Please try again.",
+    "maxAttempts": "You reached the maximum number of attempts for this test.",
+    "forbidden": "You are not allowed to start this attempt.",
+    "notFound": "We could not find this assignment.",
+    "questionTimeout": "Time for this question has expired.",
+    "versionMismatch": "The attempt changed in another window. Please refresh and try again.",
+    "backBlocked": "Back navigation is disabled for this test.",
     "completedTag": "test completed",
     "completedTitle": "Great job! Your attempt is submitted",
     "completedDescription": "Your answers have been recorded. You can close this page or go back to other tests.",
     "resultLabel": "Result",
+    "liveScore": "Live score",
+    "elapsed": "Elapsed time: {time}",
+    "copyWarning": "Copying, pasting and context menus are disabled for this test.",
+    "finishDisabled": "Answer all questions before finishing the attempt.",
+    "scoreHidden": "Results will appear after your instructor reviews the attempt.",
+    "solutionsAvailable": "Correct answers are visible after submission.",
+    "solutionsHidden": "Correct answers remain hidden for this test.",
     "loader": "Preparing the test…",
     "nextQuestion": "Loading the next question…",
     "buttons": {
       "tryAgain": "Try again",
       "finish": "Finish attempt",
       "cancel": "Cancel attempt"
+    },
+    "policy": {
+      "timeLimit": "Total time limit: {minutes} min",
+      "questionLimit": "Per-question limit: {seconds}s",
+      "requireAll": "All questions required",
+      "lockOnConfirm": "Answer locks after submission",
+      "noNavigation": "No backtracking inside the test",
+      "noCopy": "Copy & paste disabled",
+      "noBack": "Browser back button disabled"
     }
   },
   "question": {
     "tag": "question",
     "answerHint": "Select an option and press \"Submit answer\". Your answer is saved immediately.",
     "optionImageAlt": "Answer option illustration",
-    "imageAlt": "Question illustration"
+    "imageAlt": "Question illustration",
+    "timeLimitLabel": "Question timer",
+    "timeRemaining": "Time left: {time}"
   },
   "timer": {
     "label": "Time remaining",

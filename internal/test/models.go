@@ -1,9 +1,10 @@
 package test
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-	"time"
 )
 
 type Question struct {
@@ -57,11 +58,15 @@ type Test struct {
 	AllowGuests    bool       `json:"allow_guests" gorm:"not null;default:false"`
 	AvailableFrom  *time.Time `json:"available_from" gorm:"index"`
 	AvailableUntil *time.Time `json:"available_until" gorm:"index"`
+	AttemptPolicy  []byte     `json:"attempt_policy" gorm:"type:json;not null;default:'{}'"`
 }
 
 func (t *Test) BeforeCreate(tx *gorm.DB) error {
 	if t.ID == "" {
 		t.ID = uuid.New().String()
+	}
+	if len(t.AttemptPolicy) == 0 {
+		t.AttemptPolicy = []byte("{}")
 	}
 	return nil
 }

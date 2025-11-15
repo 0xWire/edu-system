@@ -5,6 +5,7 @@ import "time"
 type StartAttemptRequest struct {
 	AssignmentID string  `json:"assignment_id" validate:"required,uuid4"`
 	GuestName    *string `json:"guest_name,omitempty" validate:"omitempty,min=1,max=64"`
+	Fingerprint  *string `json:"fingerprint,omitempty" validate:"omitempty,min=6,max=128"`
 }
 
 type StartAttemptResponse struct {
@@ -12,14 +13,30 @@ type StartAttemptResponse struct {
 }
 
 type AttemptView struct {
-	AttemptID    string `json:"attempt_id"`
-	AssignmentID string `json:"assignment_id"`
-	Status       string `json:"status"`
-	Version      int    `json:"version"`
-	TimeLeftSec  int64  `json:"time_left_sec"`
-	Total        int    `json:"total"`
-	Cursor       int    `json:"cursor"`
-	GuestName    string `json:"guest_name,omitempty"`
+	AttemptID    string            `json:"attempt_id"`
+	AssignmentID string            `json:"assignment_id"`
+	Status       string            `json:"status"`
+	Version      int               `json:"version"`
+	TimeLeftSec  int64             `json:"time_left_sec"`
+	Total        int               `json:"total"`
+	Cursor       int               `json:"cursor"`
+	GuestName    string            `json:"guest_name,omitempty"`
+	Policy       AttemptPolicyView `json:"policy"`
+}
+
+type AttemptPolicyView struct {
+	ShuffleQuestions     bool   `json:"shuffle_questions"`
+	ShuffleAnswers       bool   `json:"shuffle_answers"`
+	RequireAllAnswered   bool   `json:"require_all_answered"`
+	LockAnswerOnConfirm  bool   `json:"lock_answer_on_confirm"`
+	DisableCopy          bool   `json:"disable_copy"`
+	DisableBrowserBack   bool   `json:"disable_browser_back"`
+	ShowElapsedTime      bool   `json:"show_elapsed_time"`
+	AllowNavigation      bool   `json:"allow_navigation"`
+	QuestionTimeLimitSec int64  `json:"question_time_limit_sec"`
+	MaxAttemptTimeSec    int64  `json:"max_attempt_time_sec"`
+	RevealScoreMode      string `json:"reveal_score_mode"`
+	RevealSolutions      bool   `json:"reveal_solutions"`
 }
 
 type NextQuestionResponse struct {

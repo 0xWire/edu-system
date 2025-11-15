@@ -13,4 +13,20 @@ type Repository interface {
 	Cancel(ctx context.Context, a *Attempt) error
 
 	ListSummariesByAssignments(ctx context.Context, assignments []AssignmentID) ([]AttemptSummary, error)
+	CountAttempts(ctx context.Context, filter AttemptCountFilter) (AttemptCounts, error)
+}
+
+type AttemptCountFilter struct {
+	Assignment        AssignmentID
+	User              *UserID
+	GuestName         *string
+	ClientIP          string
+	ClientFingerprint string
+}
+
+type AttemptCounts struct {
+	ByUser        int
+	ByGuest       int
+	ByIP          int
+	ByFingerprint int
 }

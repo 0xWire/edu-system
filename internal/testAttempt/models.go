@@ -17,6 +17,8 @@ var (
 	ErrForbidden          = errors.New("forbidden")
 	ErrGuestsNotAllowed   = errors.New("guests not allowed")
 	ErrAssignmentNotFound = errors.New("assignment not found")
+	ErrMaxAttempts        = errors.New("max attempts reached")
+	ErrQuestionTimeLimit  = errors.New("question time limit exceeded")
 )
 
 type AttemptStatus string
@@ -117,11 +119,15 @@ type Attempt struct {
 	submittedAt *time.Time
 	expiredAt   *time.Time
 	status      AttemptStatus
-	duration    time.Duration
+	policy      AttemptPolicy
 	version     int
 	seed        int64
 	score       float64
 	maxScore    float64
+
+	clientIP          string
+	clientFingerprint string
+	questionOpenedAt  *time.Time
 
 	order        []QuestionID
 	cursor       int // index for next question
@@ -129,20 +135,26 @@ type Attempt struct {
 	totalVisible int // total questions in the plan
 }
 
-func NewAttempt(id AttemptID, assignment AssignmentID, test TestID, user UserID, guestName *string, now time.Time, dur time.Duration, seed int64) *Attempt {
+func (a *Attempt) Policy() AttemptPolicy {
+	return a.policy
+}
+
+func NewAttempt(id AttemptID, assignment AssignmentID, test TestID, user UserID, guestName *string, now time.Time, policy AttemptPolicy, seed int64, clientIP, clientFingerprint string) *Attempt {
 	return &Attempt{
-		id:           id,
-		assignment:   assignment,
-		test:         test,
-		user:         user,
-		guestName:    guestName,
-		startedAt:    now.UTC(),
-		status:       StatusActive,
-		duration:     dur,
-		version:      0,
-		seed:         seed,
-		answers:      make(map[QuestionID]Answer),
-		totalVisible: 0,
+		id:                id,
+		assignment:        assignment,
+		test:              test,
+		user:              user,
+		guestName:         guestName,
+		startedAt:         now.UTC(),
+		status:            StatusActive,
+		policy:            policy,
+		version:           0,
+		seed:              seed,
+		answers:           make(map[QuestionID]Answer),
+		totalVisible:      0,
+		clientIP:          clientIP,
+		clientFingerprint: clientFingerprint,
 	}
 }
 
@@ -152,6 +164,7 @@ func (a *Attempt) InitializePlan(order []QuestionID) {
 	a.order = cp
 	a.totalVisible = len(cp)
 	a.cursor = 0
+	a.questionOpenedAt = nil
 }
 
 func (a *Attempt) ID() AttemptID            { return a.id }
@@ -164,7 +177,18 @@ func (a *Attempt) Version() int             { return a.version }
 func (a *Attempt) StartedAt() time.Time     { return a.startedAt }
 func (a *Attempt) SubmittedAt() *time.Time  { return a.submittedAt }
 func (a *Attempt) ExpiredAt() *time.Time    { return a.expiredAt }
-func (a *Attempt) Duration() time.Duration  { return a.duration }
+func (a *Attempt) Duration() time.Duration  { return a.policy.MaxAttemptTime }
+func (a *Attempt) ClientIP() string         { return a.clientIP }
+func (a *Attempt) ClientFingerprint() string {
+	return a.clientFingerprint
+}
+func (a *Attempt) CurrentQuestionOpenedAt() *time.Time {
+	if a.questionOpenedAt == nil {
+		return nil
+	}
+	cp := *a.questionOpenedAt
+	return &cp
+}
 func (a *Attempt) Deadline() (time.Time, bool) {
 	dl := a.deadline()
 	return dl, !dl.IsZero()
@@ -226,13 +250,30 @@ func (a *Attempt) NextQuestionID(now time.Time) (QuestionID, error) {
 		}
 		return "", fmt.Errorf("%w: attempt is %s", ErrClosed, a.status)
 	}
+	if a.policy.QuestionTimeLimit > 0 && a.questionOpenedAt != nil {
+		if now.UTC().Sub(*a.questionOpenedAt) > a.policy.QuestionTimeLimit {
+			a.status = StatusExpired
+			t := now.UTC()
+			a.expiredAt = &t
+			return "", ErrQuestionTimeLimit
+		}
+	}
 	if a.status != StatusActive {
 		return "", fmt.Errorf("%w: status=%s", ErrClosed, a.status)
 	}
 	if a.cursor >= len(a.order) {
 		return "", ErrNoMoreQuestions
 	}
-	return a.order[a.cursor], nil
+	qid := a.order[a.cursor]
+	if a.policy.QuestionTimeLimit > 0 {
+		if a.questionOpenedAt == nil {
+			t := now.UTC()
+			a.questionOpenedAt = &t
+		}
+	} else {
+		a.questionOpenedAt = nil
+	}
+	return qid, nil
 }
 
 func (a *Attempt) AnswerCurrent(clientVersion int, now time.Time, payload AnswerPayload) (int, QuestionID, error) {
@@ -257,10 +298,19 @@ func (a *Attempt) AnswerCurrent(clientVersion int, now time.Time, payload Answer
 	if a.cursor >= len(a.order) {
 		return a.version, "", ErrNoMoreQuestions
 	}
+	if a.policy.QuestionTimeLimit > 0 && a.questionOpenedAt != nil {
+		if now.Sub(*a.questionOpenedAt) > a.policy.QuestionTimeLimit {
+			a.status = StatusExpired
+			t := now
+			a.expiredAt = &t
+			return a.version, "", ErrQuestionTimeLimit
+		}
+	}
 	qid := a.order[a.cursor]
 	a.answers[qid] = Answer{QuestionID: qid, Payload: payload}
 	a.cursor++
 	a.version++
+	a.questionOpenedAt = nil
 	return a.version, qid, nil
 }
 
@@ -279,6 +329,9 @@ func (a *Attempt) Submit(clientVersion int, now time.Time, score, max float64) (
 	}
 	if err := validateScores(score, max); err != nil {
 		return a.version, err
+	}
+	if a.policy.RequireAllAnswered && len(a.answers) < a.totalVisible {
+		return a.version, fmt.Errorf("%w: all questions must be answered", ErrInvalidState)
 	}
 	a.score, a.maxScore = score, max
 	a.status = StatusSubmitted
@@ -307,14 +360,14 @@ func (a *Attempt) Cancel(clientVersion int, now time.Time) (int, error) {
 }
 
 func (a *Attempt) deadline() time.Time {
-	if a.duration <= 0 {
+	if a.policy.MaxAttemptTime <= 0 {
 		return time.Time{}
 	}
-	return a.startedAt.Add(a.duration)
+	return a.startedAt.Add(a.policy.MaxAttemptTime)
 }
 
 func (a *Attempt) exceeded(now time.Time) bool {
-	if a.duration <= 0 {
+	if a.policy.MaxAttemptTime <= 0 {
 		return false
 	}
 	dl := a.deadline()
@@ -323,6 +376,31 @@ func (a *Attempt) exceeded(now time.Time) bool {
 	}
 	return !dl.After(now)
 }
+
+type AttemptPolicy struct {
+	ShuffleQuestions    bool
+	ShuffleAnswers      bool
+	MaxQuestions        int
+	QuestionTimeLimit   time.Duration
+	MaxAttemptTime      time.Duration
+	RequireAllAnswered  bool
+	LockAnswerOnConfirm bool
+	DisableCopy         bool
+	DisableBrowserBack  bool
+	ShowElapsedTime     bool
+	RevealScoreMode     ScoreRevealMode
+	RevealSolutions     bool
+	AllowNavigation     bool
+	MaxAttempts         int
+}
+
+type ScoreRevealMode string
+
+const (
+	ScoreRevealNever       ScoreRevealMode = "never"
+	ScoreRevealAfterSubmit ScoreRevealMode = "after_submit"
+	ScoreRevealAlways      ScoreRevealMode = "always"
+)
 
 func validateScores(score, max float64) error {
 	if math.IsNaN(score) || math.IsNaN(max) || math.IsInf(score, 0) || math.IsInf(max, 0) {

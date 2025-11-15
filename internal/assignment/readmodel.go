@@ -27,10 +27,19 @@ func (a assignmentReadModel) GetAssignment(ctx context.Context, id testAttempt.A
 			return testAttempt.AssignmentDescriptor{}, err
 		}
 	}
+	var template *testAttempt.AssignmentTemplate
+	if len(asg.Template) > 0 {
+		tpl, err := DecodeTemplateSnapshot(asg.Template)
+		if err != nil {
+			return testAttempt.AssignmentDescriptor{}, err
+		}
+		template = tpl.ToAssignmentTemplate()
+	}
 	return testAttempt.AssignmentDescriptor{
-		ID:      id,
-		TestID:  testAttempt.TestID(asg.TestID),
-		OwnerID: testAttempt.UserID(asg.OwnerID),
-		Title:   asg.Title,
+		ID:       id,
+		TestID:   testAttempt.TestID(asg.TestID),
+		OwnerID:  testAttempt.UserID(asg.OwnerID),
+		Title:    asg.Title,
+		Template: template,
 	}, nil
 }

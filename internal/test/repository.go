@@ -15,7 +15,7 @@ type TestRepository interface {
 	Delete(id string) error
 
 	//TODO: consider moving these methods to a separate interface
-	GetTestSettings(ctx context.Context, testID string) (durationSec int, availableFrom, availableUntil *time.Time, allowGuests bool, err error)
+	GetTestSettings(ctx context.Context, testID string) (durationSec int, availableFrom, availableUntil *time.Time, allowGuests bool, policy testAttempt.AttemptPolicy, err error)
 	ListVisibleQuestions(ctx context.Context, testID string) ([]testAttempt.VisibleQuestion, error)
 	ListQuestionsForScoring(ctx context.Context, testID string) ([]testAttempt.QuestionForScoring, error)
 }

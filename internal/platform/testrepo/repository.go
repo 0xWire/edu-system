@@ -1,6 +1,7 @@
 package testrepo
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"time"
@@ -51,12 +52,15 @@ func (r *testRepository) Delete(id string) error {
 	return r.db.Delete(&test.Test{}, "id = ?", id).Error
 }
 
-func (r *testRepository) GetTestSettings(ctx context.Context, testID string) (durationSec int, availableFrom, availableUntil *time.Time, allowGuests bool, err error) {
+func (r *testRepository) GetTestSettings(ctx context.Context, testID string) (durationSec int, availableFrom, availableUntil *time.Time, allowGuests bool, policy ta.AttemptPolicy, err error) {
 	var t test.Test
 	if err = r.db.WithContext(ctx).First(&t, "id = ?", testID).Error; err != nil {
-		return 0, nil, nil, false, err
+		return 0, nil, nil, false, ta.AttemptPolicy{}, err
 	}
-	return t.DurationSec, t.AvailableFrom, t.AvailableUntil, t.AllowGuests, nil
+	if policy, err = decodePolicy(t.AttemptPolicy, t.DurationSec); err != nil {
+		return 0, nil, nil, false, ta.AttemptPolicy{}, err
+	}
+	return t.DurationSec, t.AvailableFrom, t.AvailableUntil, t.AllowGuests, policy, nil
 }
 
 func (r *testRepository) ListVisibleQuestions(ctx context.Context, testID string) ([]ta.VisibleQuestion, error) {
@@ -107,4 +111,26 @@ func (r *testRepository) ListQuestionsForScoring(ctx context.Context, testID str
 		})
 	}
 	return out, nil
+}
+
+func decodePolicy(raw []byte, durationSec int) (ta.AttemptPolicy, error) {
+	raw = bytes.TrimSpace(raw)
+
+	policy := defaultAttemptPolicy()
+	if len(raw) != 0 && !bytes.Equal(raw, []byte("null")) && !bytes.Equal(raw, []byte("{}")) {
+		if err := json.Unmarshal(raw, &policy); err != nil {
+			return ta.AttemptPolicy{}, err
+		}
+	}
+	if policy.MaxAttemptTime <= 0 && durationSec > 0 {
+		policy.MaxAttemptTime = time.Duration(durationSec) * time.Second
+	}
+	return policy, nil
+}
+
+func defaultAttemptPolicy() ta.AttemptPolicy {
+	return ta.AttemptPolicy{
+		ShuffleQuestions: true,
+		ShuffleAnswers:   true,
+	}
 }
