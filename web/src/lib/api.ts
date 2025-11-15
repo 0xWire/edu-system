@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const API_BASE_URL =
+  (process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '')) ||
+  (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081');
 
 // Create axios instance
 const api = axios.create({

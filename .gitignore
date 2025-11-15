@@ -1,6 +1,4 @@
 database.db
-.env
+*.env
 .idea
-.env
-.env
 /.gocache/
