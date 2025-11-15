@@ -79,6 +79,10 @@ export default function DashboardTests() {
     setConfiguringError(null);
   }, []);
 
+  const handleViewTest = useCallback((testId: string) => {
+    router.push(`/dashboard/tests/${testId}`);
+  }, [router]);
+
   const handleGenerateShareLink = useCallback(
     async (testId: string) => {
       try {
@@ -317,6 +321,13 @@ export default function DashboardTests() {
                       </div>
 
                       <div className="mt-6 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleViewTest(test.test_id)}
+                          className="rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-indigo-500/40 hover:bg-indigo-500/10"
+                        >
+                          {t('dashboard.testsDetail.viewAction')}
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleLaunchTest(test)}

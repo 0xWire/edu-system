@@ -56,11 +56,12 @@ func (r *Repository) ListByOwner(ctx context.Context, ownerID uint) ([]assignmen
 
 func fromDomain(a *assignment.Assignment) assignmentRow {
 	return assignmentRow{
-		ID:        a.ID,
-		TestID:    a.TestID,
-		OwnerID:   a.OwnerID,
-		Title:     a.Title,
-		CreatedAt: a.CreatedAt,
+		ID:               a.ID,
+		TestID:           a.TestID,
+		OwnerID:          a.OwnerID,
+		Title:            a.Title,
+		CreatedAt:        a.CreatedAt,
+		TemplateSnapshot: []byte(a.Template),
 	}
 }
 
@@ -71,6 +72,7 @@ func toDomain(row *assignmentRow) *assignment.Assignment {
 		OwnerID:   row.OwnerID,
 		Title:     row.Title,
 		CreatedAt: row.CreatedAt,
+		Template:  row.TemplateSnapshot,
 	}
 }
 
@@ -79,9 +81,10 @@ type assignmentRow struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
-	TestID  string `gorm:"not null;type:varchar(36);index"`
-	OwnerID uint   `gorm:"not null;index"`
-	Title   string `gorm:"type:varchar(255)"`
+	TestID           string `gorm:"not null;type:varchar(36);index"`
+	OwnerID          uint   `gorm:"not null;index"`
+	Title            string `gorm:"type:varchar(255)"`
+	TemplateSnapshot []byte `gorm:"type:json"`
 }
 
 func (assignmentRow) TableName() string { return "test_assignments" }

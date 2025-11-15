@@ -110,6 +110,22 @@
       "unknownAuthor": "Not specified",
       "ready": "Ready to launch"
     },
+    "testsDetail": {
+      "tag": "test details",
+      "error": "We couldn't load this test. Try again later.",
+      "backToTests": "Back to tests",
+      "viewAction": "View details",
+      "editAction": "Edit test",
+      "launchAction": "Launch test",
+      "durationNone": "No time limit",
+      "durationMinutes": "Duration: {value} min",
+      "guestsAllowed": "Guests allowed",
+      "guestsDisabled": "Guests disabled",
+      "questionLabel": "Question {index}",
+      "questionImageAlt": "Question {index} illustration",
+      "optionImageAlt": "Answer {option} for question {index}",
+      "correctBadge": "Correct"
+    },
     "launch": {
       "tag": "launch setup",
       "title": "Configure attempt for {name}",

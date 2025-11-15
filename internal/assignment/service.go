@@ -45,12 +45,22 @@ func (s *Service) Create(ctx context.Context, ownerID uint, testID string, title
 		name = t.Title
 	}
 
+	snapshot, err := BuildTemplateSnapshot(t)
+	if err != nil {
+		return nil, err
+	}
+	rawSnapshot, err := snapshot.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
 	a := &Assignment{
 		ID:        uuid.NewString(),
 		TestID:    testID,
 		OwnerID:   ownerID,
 		Title:     name,
 		CreatedAt: s.clock(),
+		Template:  rawSnapshot,
 	}
 
 	if err := s.repo.Create(ctx, a); err != nil {

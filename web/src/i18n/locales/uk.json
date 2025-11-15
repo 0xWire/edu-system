@@ -110,6 +110,22 @@
       "unknownAuthor": "Не вказано",
       "ready": "Готовий до запуску"
     },
+    "testsDetail": {
+      "tag": "деталі тесту",
+      "error": "Не вдалося завантажити тест. Спробуйте пізніше.",
+      "backToTests": "До тестів",
+      "viewAction": "Переглянути",
+      "editAction": "Редагувати тест",
+      "launchAction": "Запустити тест",
+      "durationNone": "Без обмеження часу",
+      "durationMinutes": "Тривалість: {value} хв",
+      "guestsAllowed": "Гости дозволені",
+      "guestsDisabled": "Лише зареєстровані",
+      "questionLabel": "Питання {index}",
+      "questionImageAlt": "Ілюстрація до питання {index}",
+      "optionImageAlt": "Варіант {option} для питання {index}",
+      "correctBadge": "Правильна відповідь"
+    },
     "assignments": {
       "title": "Спроби тестів",
       "subtitle": "Згенеровані посилання та результати студентів будуть тут.",
