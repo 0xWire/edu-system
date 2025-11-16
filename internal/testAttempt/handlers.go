@@ -242,6 +242,73 @@ func (h *Handlers) ListByAssignment(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// GET /v1/attempts/:id/details
+func (h *Handlers) Details(c *gin.Context) {
+	attemptID := c.Param("id")
+	if attemptID == "" {
+		c.JSON(http.StatusBadRequest, errJSON("invalid_id", "missing id"))
+		return
+	}
+	userID, ok := userIDFromCtx(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, errJSON("unauthorized", "authentication required"))
+		return
+	}
+	details, err := h.svc.AttemptDetails(c, UserID(userID), AttemptID(attemptID))
+	if err != nil {
+		writeDomainErr(c, err)
+		return
+	}
+	resp := dto.AttemptDetailsResponse{
+		Attempt: dto.AttemptDetailsView{
+			AttemptID:    details.Attempt.AttemptID,
+			AssignmentID: details.Attempt.AssignmentID,
+			TestID:       details.Attempt.TestID,
+			Status:       string(details.Attempt.Status),
+			StartedAt:    details.Attempt.StartedAt,
+			SubmittedAt:  details.Attempt.SubmittedAt,
+			ExpiredAt:    details.Attempt.ExpiredAt,
+			DurationSec:  int(details.Attempt.Duration / time.Second),
+			Score:        details.Attempt.Score,
+			MaxScore:     details.Attempt.MaxScore,
+			Participant: dto.ParticipantView{
+				Kind: details.Attempt.Participant.Kind,
+				Name: details.Attempt.Participant.Name,
+			},
+		},
+		Answers: make([]dto.AnsweredQuestionView, 0, len(details.Answers)),
+	}
+	if details.Attempt.Participant.UserID != nil {
+		uid := uint64(*details.Attempt.Participant.UserID)
+		resp.Attempt.Participant.UserID = &uid
+	}
+	for _, answer := range details.Answers {
+		item := dto.AnsweredQuestionView{
+			QuestionID:   answer.QuestionID,
+			QuestionText: answer.QuestionText,
+			ImageURL:     answer.ImageURL,
+			Kind:         answer.Kind,
+			TextAnswer:   answer.TextAnswer,
+			IsCorrect:    answer.IsCorrect,
+			Score:        answer.Score,
+			Options:      make([]dto.AnsweredOptionView, 0, len(answer.Options)),
+		}
+		if answer.CodeAnswer != nil {
+			item.CodeAnswer = &dto.CodeAnswerView{Lang: answer.CodeAnswer.Lang, Body: answer.CodeAnswer.Body}
+		}
+		for _, opt := range answer.Options {
+			item.Options = append(item.Options, dto.AnsweredOptionView{
+				ID:         opt.ID,
+				OptionText: opt.OptionText,
+				ImageURL:   opt.ImageURL,
+				Selected:   opt.Selected,
+			})
+		}
+		resp.Answers = append(resp.Answers, item)
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
 // Helpers.
 
 func userIDFromCtx(c *gin.Context) (uint64, bool) {

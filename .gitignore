@@ -2,3 +2,4 @@ database.db
 *.env
 .idea
 /.gocache/
+.cache/

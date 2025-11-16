@@ -99,3 +99,46 @@ export interface AttemptParticipant {
   name: string;
   user_id?: number;
 }
+
+export interface AttemptDetails {
+  attempt: AttemptDetailsMeta;
+  answers: AttemptAnswer[];
+}
+
+export interface AttemptDetailsMeta {
+  attempt_id: string;
+  assignment_id: string;
+  test_id: string;
+  status: string;
+  started_at: string;
+  submitted_at?: string;
+  expired_at?: string;
+  duration_sec: number;
+  score: number;
+  max_score: number;
+  participant: AttemptParticipant;
+}
+
+export interface AttemptAnswer {
+  question_id: string;
+  question_text: string;
+  image_url?: string;
+  kind: 'single' | 'multi' | 'text' | 'code' | string;
+  options?: AttemptAnswerOption[];
+  text_answer?: string;
+  code_answer?: CodeAnswerView;
+  is_correct?: boolean;
+  score?: number;
+}
+
+export interface AttemptAnswerOption {
+  id: string;
+  option_text: string;
+  image_url?: string;
+  selected: boolean;
+}
+
+export interface CodeAnswerView {
+  lang: string;
+  body: string;
+}

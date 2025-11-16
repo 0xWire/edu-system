@@ -98,3 +98,46 @@ type ParticipantView struct {
 	Name   string  `json:"name"`
 	UserID *uint64 `json:"user_id,omitempty"`
 }
+
+type AttemptDetailsResponse struct {
+	Attempt AttemptDetailsView     `json:"attempt"`
+	Answers []AnsweredQuestionView `json:"answers"`
+}
+
+type AttemptDetailsView struct {
+	AttemptID    string          `json:"attempt_id"`
+	AssignmentID string          `json:"assignment_id"`
+	TestID       string          `json:"test_id"`
+	Status       string          `json:"status"`
+	StartedAt    time.Time       `json:"started_at"`
+	SubmittedAt  *time.Time      `json:"submitted_at,omitempty"`
+	ExpiredAt    *time.Time      `json:"expired_at,omitempty"`
+	DurationSec  int             `json:"duration_sec"`
+	Score        float64         `json:"score"`
+	MaxScore     float64         `json:"max_score"`
+	Participant  ParticipantView `json:"participant"`
+}
+
+type AnsweredQuestionView struct {
+	QuestionID   string               `json:"question_id"`
+	QuestionText string               `json:"question_text"`
+	ImageURL     string               `json:"image_url,omitempty"`
+	Kind         string               `json:"kind"`
+	Options      []AnsweredOptionView `json:"options,omitempty"`
+	TextAnswer   string               `json:"text_answer,omitempty"`
+	CodeAnswer   *CodeAnswerView      `json:"code_answer,omitempty"`
+	IsCorrect    *bool                `json:"is_correct,omitempty"`
+	Score        *float64             `json:"score,omitempty"`
+}
+
+type AnsweredOptionView struct {
+	ID         string `json:"id"`
+	OptionText string `json:"option_text"`
+	ImageURL   string `json:"image_url,omitempty"`
+	Selected   bool   `json:"selected"`
+}
+
+type CodeAnswerView struct {
+	Lang string `json:"lang"`
+	Body string `json:"body"`
+}

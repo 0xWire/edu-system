@@ -1,18 +1,16 @@
 'use client';
 
+import { useParams } from 'next/navigation';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import AssignmentManagePage from '@/components/AssignmentManagePage';
 
-interface ManageAssignmentPageProps {
-  params: {
-    assignmentId: string;
-  };
-}
+export default function ManageAssignmentPage() {
+  const params = useParams<{ assignmentId: string }>();
+  const assignmentId = params?.assignmentId || '';
 
-export default function ManageAssignmentPage({ params }: ManageAssignmentPageProps) {
   return (
     <ProtectedRoute requireAuth={true}>
-      <AssignmentManagePage assignmentId={params.assignmentId} />
+      <AssignmentManagePage assignmentId={assignmentId} />
     </ProtectedRoute>
   );
 }

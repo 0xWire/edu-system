@@ -144,7 +144,8 @@
         "score": "Результат",
         "status": "Статус",
         "started": "Початок",
-        "completed": "Завершено"
+        "completed": "Завершено",
+        "actions": "Дії"
       },
       "labels": {
         "guest": "Гість",
@@ -155,7 +156,17 @@
         "submitted": "Надіслано",
         "expired": "Час вийшов",
         "canceled": "Скасовано"
-      }
+      },
+      "viewAnswers": "Відповіді",
+      "detailsTitle": "Деталі спроби",
+      "detailsAttemptBy": "Учасник: {name}",
+      "detailsLoading": "Завантажуємо відповіді…",
+      "detailsError": "Не вдалося завантажити спробу. Спробуйте ще раз.",
+      "detailsSelected": "Вибрано",
+      "detailsNoAnswer": "Відповідь відсутня",
+      "answerKind": "Тип: {kind}",
+      "detailsTextAnswer": "Текстова відповідь",
+      "detailsCodeAnswer": "Відповідь кодом ({lang})"
     },
     "launch": {
       "tag": "налаштування запуску",

@@ -185,7 +185,8 @@
         "score": "Score",
         "status": "Status",
         "started": "Started",
-        "completed": "Completed"
+        "completed": "Completed",
+        "actions": "Actions"
       },
       "labels": {
         "guest": "Guest",
@@ -196,7 +197,17 @@
         "submitted": "Submitted",
         "expired": "Expired",
         "canceled": "Cancelled"
-      }
+      },
+      "viewAnswers": "Answers",
+      "detailsTitle": "Attempt details",
+      "detailsAttemptBy": "Participant: {name}",
+      "detailsLoading": "Loading attempt details…",
+      "detailsError": "Could not load attempt details. Please try again.",
+      "detailsSelected": "Selected",
+      "detailsNoAnswer": "No answer provided",
+      "answerKind": "Type: {kind}",
+      "detailsTextAnswer": "Text answer",
+      "detailsCodeAnswer": "Code answer ({lang})"
     },
     "modal": {
       "tag": "New test",

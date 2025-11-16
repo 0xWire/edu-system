@@ -378,6 +378,135 @@ func (s *Service) ListAssignmentAttempts(ctx context.Context, requester UserID, 
 	return summaries, nil
 }
 
+func (s *Service) AttemptDetails(ctx context.Context, requester UserID, attemptID AttemptID) (AttemptDetails, error) {
+	a, err := s.repo.GetByID(ctx, attemptID)
+	if err != nil {
+		return AttemptDetails{}, err
+	}
+	descriptor, err := s.assignments.GetAssignment(ctx, a.Assignment())
+	if err != nil {
+		return AttemptDetails{}, err
+	}
+	if descriptor.OwnerID != requester {
+		return AttemptDetails{}, ErrForbidden
+	}
+
+	visibleQuestions, err := s.getVisibleQuestions(ctx, descriptor, a.Test())
+	if err != nil {
+		return AttemptDetails{}, err
+	}
+	vqByID := make(map[string]VisibleQuestion, len(visibleQuestions))
+	for _, q := range visibleQuestions {
+		vqByID[q.ID] = q
+	}
+
+	qTypes := make(map[QuestionID]string)
+	if descriptor.Template != nil {
+		for _, q := range descriptor.Template.Questions {
+			qTypes[q.ID] = "single"
+		}
+	} else if qs, err := s.tests.ListQuestionsForScoring(ctx, string(a.Test())); err == nil {
+		for _, q := range qs {
+			qTypes[QuestionID(q.ID)] = q.Type
+		}
+	}
+
+	var info *UserInfo
+	if s.users != nil && a.User() != 0 {
+		if profiles, err := s.users.Lookup(ctx, []UserID{a.User()}); err == nil {
+			if val, ok := profiles[a.User()]; ok {
+				info = &val
+			}
+		}
+	}
+
+	score, maxScore := a.Score()
+	result := AttemptDetails{
+		Attempt: AttemptDetailsHeader{
+			AttemptID:    string(a.ID()),
+			AssignmentID: string(a.Assignment()),
+			TestID:       string(a.Test()),
+			Status:       a.Status(),
+			StartedAt:    a.StartedAt(),
+			SubmittedAt:  a.SubmittedAt(),
+			ExpiredAt:    a.ExpiredAt(),
+			Duration:     a.Duration(),
+			Score:        score,
+			MaxScore:     maxScore,
+			Participant:  buildParticipant(a, info),
+		},
+		Answers: make([]AnsweredQuestion, 0, a.Total()),
+	}
+
+	plan := a.Plan()
+	answers := a.Answers()
+	for idx, qid := range plan {
+		vq, ok := vqByID[string(qid)]
+		if !ok {
+			continue
+		}
+		opts := vq.Options
+		if a.Policy().ShuffleAnswers {
+			opts = shuffleOptions(vq.Options, a.Seed(), idx)
+		}
+
+		answered, ok := answers[qid]
+		kind := qTypes[qid]
+		if kind == "" {
+			kind = "single"
+		}
+		var (
+			selectedIndexes = make(map[int]struct{})
+			textAnswer      string
+			codeAnswer      *CodePayload
+			isCorrect       *bool
+			scorePtr        *float64
+		)
+		if ok {
+			kind = answerKindToString(answered.Payload.Kind, kind)
+			switch answered.Payload.Kind {
+			case AnswerSingle:
+				selectedIndexes[answered.Payload.Single] = struct{}{}
+			case AnswerMulti:
+				for _, i := range answered.Payload.Multi {
+					selectedIndexes[i] = struct{}{}
+				}
+			case AnswerText:
+				textAnswer = answered.Payload.Text
+			case AnswerCode:
+				codeAnswer = answered.Payload.Code
+			}
+			isCorrect = answered.IsCorrect
+			scorePtr = answered.Score
+		}
+
+		optionViews := make([]AnsweredOption, 0, len(opts))
+		for i, opt := range opts {
+			_, sel := selectedIndexes[i]
+			optionViews = append(optionViews, AnsweredOption{
+				ID:         opt.ID,
+				OptionText: opt.OptionText,
+				ImageURL:   opt.ImageURL,
+				Selected:   sel,
+			})
+		}
+
+		result.Answers = append(result.Answers, AnsweredQuestion{
+			QuestionID:   vq.ID,
+			QuestionText: vq.QuestionText,
+			ImageURL:     vq.ImageURL,
+			Kind:         kind,
+			Options:      optionViews,
+			TextAnswer:   textAnswer,
+			CodeAnswer:   codeAnswer,
+			IsCorrect:    isCorrect,
+			Score:        scorePtr,
+		})
+	}
+
+	return result, nil
+}
+
 func (s *Service) Submit(ctx context.Context, requester *UserID, id AttemptID, version int) (AttemptView, error) {
 	a, err := s.repo.GetByID(ctx, id)
 	if err != nil {
@@ -478,6 +607,50 @@ type AnsweredView struct {
 	QuestionID string `json:"question_id"`
 }
 
+type AttemptDetails struct {
+	Attempt AttemptDetailsHeader
+	Answers []AnsweredQuestion
+}
+
+type AttemptDetailsHeader struct {
+	AttemptID    string
+	AssignmentID string
+	TestID       string
+	Status       AttemptStatus
+	StartedAt    time.Time
+	SubmittedAt  *time.Time
+	ExpiredAt    *time.Time
+	Duration     time.Duration
+	Score        float64
+	MaxScore     float64
+	Participant  Participant
+}
+
+type Participant struct {
+	Kind   string
+	Name   string
+	UserID *UserID
+}
+
+type AnsweredQuestion struct {
+	QuestionID   string
+	QuestionText string
+	ImageURL     string
+	Kind         string
+	Options      []AnsweredOption
+	TextAnswer   string
+	CodeAnswer   *CodePayload
+	IsCorrect    *bool
+	Score        *float64
+}
+
+type AnsweredOption struct {
+	ID         string
+	OptionText string
+	ImageURL   string
+	Selected   bool
+}
+
 func attemptToView(a *Attempt, now time.Time) AttemptView {
 	dl, hasDL := a.Deadline()
 	var left int64
@@ -537,6 +710,48 @@ func makeQuestionView(v VisibleQuestion, opts []VisibleOption) QuestionView {
 		})
 	}
 	return out
+}
+
+func (s *Service) getVisibleQuestions(ctx context.Context, descriptor AssignmentDescriptor, testID TestID) ([]VisibleQuestion, error) {
+	if descriptor.Template != nil {
+		return descriptor.Template.VisibleQuestions(), nil
+	}
+	return s.tests.ListVisibleQuestions(ctx, string(testID))
+}
+
+func buildParticipant(a *Attempt, info *UserInfo) Participant {
+	if a.User() != 0 {
+		name := fmt.Sprintf("User #%d", a.User())
+		if info != nil {
+			name = info.FullName()
+		}
+		id := a.User()
+		return Participant{
+			Kind:   "user",
+			Name:   name,
+			UserID: &id,
+		}
+	}
+	name := "Guest"
+	if a.GuestName() != nil && *a.GuestName() != "" {
+		name = *a.GuestName()
+	}
+	return Participant{Kind: "guest", Name: name}
+}
+
+func answerKindToString(kind AnswerKind, fallback string) string {
+	switch kind {
+	case AnswerSingle:
+		return "single"
+	case AnswerMulti:
+		return "multi"
+	case AnswerText:
+		return "text"
+	case AnswerCode:
+		return "code"
+	default:
+		return fallback
+	}
 }
 
 func shuffleQuestionIDs(qs []VisibleQuestion, seed int64) []QuestionID {
