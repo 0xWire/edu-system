@@ -81,7 +81,10 @@ type Question struct {
 	Author        string   `json:"author,omitempty"`
 	QuestionText  string   `json:"question_text" binding:"required"`
 	Options       []Answer `json:"options" binding:"required,min=2"`
-	CorrectOption int      `json:"correct_option" binding:"required,min=0"`
+	CorrectOption int      `json:"correct_option"`
+	CorrectOptions []int   `json:"correct_options,omitempty"`
+	Type          string   `json:"type,omitempty"`   // single | multi | text | code
+	Weight        float64  `json:"weight,omitempty"` // default 1
 	ImageURL      string   `json:"image_url,omitempty"`
 }
 
@@ -90,6 +93,9 @@ type QuestionResponse struct {
 	QuestionText  string           `json:"question_text"`
 	Options       []OptionResponse `json:"options"`
 	CorrectOption int              `json:"correct_option"`
+	CorrectOptions []int           `json:"correct_options,omitempty"`
+	Type          string           `json:"type"`
+	Weight        float64          `json:"weight"`
 	ImageURL      string           `json:"image_url,omitempty"`
 }
 

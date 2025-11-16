@@ -84,8 +84,10 @@ func (r *testRepository) ListVisibleQuestions(ctx context.Context, testID string
 		}
 		out = append(out, ta.VisibleQuestion{
 			ID:           q.ID,
+			Type:         normalizeQuestionType(q.Type),
 			QuestionText: q.QuestionText,
 			ImageURL:     q.ImageURL,
+			Weight:       normalizeWeight(q.Weight),
 			Options:      opts,
 		})
 	}
@@ -102,12 +104,22 @@ func (r *testRepository) ListQuestionsForScoring(ctx context.Context, testID str
 
 	out := make([]ta.QuestionForScoring, 0, len(qs))
 	for _, q := range qs {
-		cj, _ := json.Marshal(map[string]any{"selected": []int{q.CorrectOption}})
+		qType := normalizeQuestionType(q.Type)
+		weight := normalizeWeight(q.Weight)
+		var correct []byte
+		if len(q.CorrectJSON) > 0 {
+			correct = q.CorrectJSON
+		} else {
+			correct, _ = json.Marshal(map[string]any{"selected": []int{q.CorrectOption}})
+		}
+		if qType == "text" || qType == "code" {
+			correct = nil
+		}
 		out = append(out, ta.QuestionForScoring{
 			ID:          q.ID,
-			Type:        "single",
-			Weight:      1.0,
-			CorrectJSON: cj,
+			Type:        qType,
+			Weight:      weight,
+			CorrectJSON: correct,
 		})
 	}
 	return out, nil
@@ -133,4 +145,20 @@ func defaultAttemptPolicy() ta.AttemptPolicy {
 		ShuffleQuestions: true,
 		ShuffleAnswers:   true,
 	}
+}
+
+func normalizeQuestionType(t string) string {
+	switch t {
+	case "multi", "text", "code":
+		return t
+	default:
+		return "single"
+	}
+}
+
+func normalizeWeight(w float64) float64 {
+	if w <= 0 {
+		return 1
+	}
+	return w
 }

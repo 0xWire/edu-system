@@ -236,6 +236,7 @@ func (h *Handlers) ListByAssignment(c *gin.Context) {
 			DurationSec:  int(a.Duration / time.Second),
 			Score:        a.Score,
 			MaxScore:     a.MaxScore,
+			PendingScore: a.PendingScore,
 			Participant:  participant,
 		})
 	}
@@ -271,6 +272,7 @@ func (h *Handlers) Details(c *gin.Context) {
 			DurationSec:  int(details.Attempt.Duration / time.Second),
 			Score:        details.Attempt.Score,
 			MaxScore:     details.Attempt.MaxScore,
+			PendingScore: details.Attempt.PendingScore,
 			Participant: dto.ParticipantView{
 				Kind: details.Attempt.Participant.Kind,
 				Name: details.Attempt.Participant.Name,
@@ -305,6 +307,60 @@ func (h *Handlers) Details(c *gin.Context) {
 			})
 		}
 		resp.Answers = append(resp.Answers, item)
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+// POST /v1/attempts/:id/grade
+func (h *Handlers) Grade(c *gin.Context) {
+	attemptID := c.Param("id")
+	if attemptID == "" {
+		c.JSON(http.StatusBadRequest, errJSON("invalid_id", "missing id"))
+		return
+	}
+	ownerID, ok := userIDFromCtx(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, errJSON("unauthorized", "authentication required"))
+		return
+	}
+	var req dto.GradeAnswerRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, errJSON("bad_json", err.Error()))
+		return
+	}
+	if err := h.v.Struct(req); err != nil {
+		c.JSON(http.StatusBadRequest, errJSON("invalid", err.Error()))
+		return
+	}
+
+	details, err := h.svc.GradeAnswer(c, UserID(ownerID), AttemptID(attemptID), QuestionID(req.QuestionID), req.Score, req.IsCorrect)
+	if err != nil {
+		writeDomainErr(c, err)
+		return
+	}
+
+	resp := dto.GradeAnswerResponse{
+		Attempt: dto.AttemptDetailsView{
+			AttemptID:    details.Attempt.AttemptID,
+			AssignmentID: details.Attempt.AssignmentID,
+			TestID:       details.Attempt.TestID,
+			Status:       string(details.Attempt.Status),
+			StartedAt:    details.Attempt.StartedAt,
+			SubmittedAt:  details.Attempt.SubmittedAt,
+			ExpiredAt:    details.Attempt.ExpiredAt,
+			DurationSec:  int(details.Attempt.Duration / time.Second),
+			Score:        details.Attempt.Score,
+			MaxScore:     details.Attempt.MaxScore,
+			PendingScore: details.Attempt.PendingScore,
+			Participant: dto.ParticipantView{
+				Kind: details.Attempt.Participant.Kind,
+				Name: details.Attempt.Participant.Name,
+			},
+		},
+	}
+	if details.Attempt.Participant.UserID != nil {
+		uid := uint64(*details.Attempt.Participant.UserID)
+		resp.Attempt.Participant.UserID = &uid
 	}
 	c.JSON(http.StatusOK, resp)
 }

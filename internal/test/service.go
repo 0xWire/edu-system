@@ -42,10 +42,12 @@ func (t testService) CreateTest(ownerID uint, req *dto.CreateTestRequest) error 
 
 	for _, q := range req.Questions {
 		question := Question{
-			QuestionText:  q.QuestionText,
-			Options:       make([]Option, 0),
-			CorrectOption: q.CorrectOption,
+			QuestionText: q.QuestionText,
+			Options:      make([]Option, 0),
+			Type:         normalizeQuestionType(q.Type),
+			Weight:       normalizeWeight(q.Weight),
 		}
+		setCorrectAnswers(&question, q)
 
 		for _, option := range q.Options {
 			question.Options = append(question.Options, Option{
@@ -131,10 +133,12 @@ func (t testService) UpdateTest(ownerID uint, testID string, req *dto.UpdateTest
 
 		for _, q := range req.Questions {
 			question := Question{
-				QuestionText:  q.QuestionText,
-				Options:       make([]Option, 0, len(q.Options)),
-				CorrectOption: q.CorrectOption,
+				QuestionText: q.QuestionText,
+				Options:      make([]Option, 0, len(q.Options)),
+				Type:         normalizeQuestionType(q.Type),
+				Weight:       normalizeWeight(q.Weight),
 			}
+			setCorrectAnswers(&question, q)
 
 			for _, option := range q.Options {
 				question.Options = append(question.Options, Option{
@@ -222,11 +226,14 @@ func (t testService) ListTests(ownerID uint) ([]*dto.GetTestResponse, error) {
 
 		for _, q := range test.Questions {
 			questionResponse := dto.QuestionResponse{
-				ID:            q.ID,
-				QuestionText:  q.QuestionText,
-				CorrectOption: q.CorrectOption,
-				ImageURL:      q.ImageURL,
-				Options:       make([]dto.OptionResponse, 0),
+				ID:             q.ID,
+				QuestionText:   q.QuestionText,
+				CorrectOption:  q.CorrectOption,
+				CorrectOptions: decodeCorrectOptions(q.CorrectJSON),
+				Type:           normalizeQuestionType(q.Type),
+				Weight:         normalizeWeight(q.Weight),
+				ImageURL:       q.ImageURL,
+				Options:        make([]dto.OptionResponse, 0),
 			}
 
 			for _, opt := range q.Options {
@@ -242,6 +249,73 @@ func (t testService) ListTests(ownerID uint) ([]*dto.GetTestResponse, error) {
 	}
 
 	return responses, nil
+}
+
+func normalizeQuestionType(tpe string) string {
+	switch tpe {
+	case "multi", "text", "code":
+		return tpe
+	default:
+		return "single"
+	}
+}
+
+func normalizeWeight(w float64) float64 {
+	if w <= 0 {
+		return 1
+	}
+	return w
+}
+
+func setCorrectAnswers(q *Question, req dto.Question) {
+	tpe := normalizeQuestionType(req.Type)
+	q.Type = tpe
+	q.Weight = normalizeWeight(req.Weight)
+
+	switch tpe {
+	case "multi":
+		opts := req.CorrectOptions
+		if len(opts) == 0 && req.CorrectOption >= 0 {
+			opts = []int{req.CorrectOption}
+		}
+		payload, _ := json.Marshal(map[string]any{"selected": opts})
+		q.CorrectJSON = payload
+		if len(opts) > 0 {
+			q.CorrectOption = opts[0]
+		}
+	case "text":
+		q.CorrectOption = 0
+		q.CorrectJSON = nil
+	case "code":
+		q.CorrectOption = 0
+		q.CorrectJSON = nil
+	default: // single
+		q.CorrectOption = req.CorrectOption
+		payload, _ := json.Marshal(map[string]any{"selected": []int{req.CorrectOption}})
+		q.CorrectJSON = payload
+	}
+}
+
+func decodeCorrectOptions(raw []byte) []int {
+	if len(raw) == 0 {
+		return nil
+	}
+	var obj map[string]any
+	if err := json.Unmarshal(raw, &obj); err != nil {
+		return nil
+	}
+	val, ok := obj["selected"]
+	if !ok {
+		return nil
+	}
+	arr, _ := val.([]any)
+	out := make([]int, 0, len(arr))
+	for _, v := range arr {
+		if f, ok := v.(float64); ok {
+			out = append(out, int(f))
+		}
+	}
+	return out
 }
 
 func cloneTimePtr(src *time.Time) *time.Time {

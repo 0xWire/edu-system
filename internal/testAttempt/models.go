@@ -124,6 +124,7 @@ type Attempt struct {
 	seed        int64
 	score       float64
 	maxScore    float64
+	pending     float64
 
 	clientIP          string
 	clientFingerprint string
@@ -195,6 +196,7 @@ func (a *Attempt) Deadline() (time.Time, bool) {
 }
 func (a *Attempt) Seed() int64               { return a.seed }
 func (a *Attempt) Score() (float64, float64) { return a.score, a.maxScore }
+func (a *Attempt) PendingScore() float64     { return a.pending }
 func (a *Attempt) Total() int                { return a.totalVisible }
 func (a *Attempt) Cursor() int               { return a.cursor }
 func (a *Attempt) Answers() map[QuestionID]Answer {
@@ -218,6 +220,7 @@ type AttemptSummary struct {
 	Duration     time.Duration
 	Score        float64
 	MaxScore     float64
+	PendingScore float64
 	User         *UserInfo
 }
 

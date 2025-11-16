@@ -15,7 +15,10 @@ type Question struct {
 	TestID        string         `json:"test_id" gorm:"not null;type:varchar(36);index"`
 	QuestionText  string         `json:"question_text" gorm:"not null"`
 	Options       []Option       `json:"options" gorm:"foreignKey:QuestionID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	Type          string         `json:"type" gorm:"type:varchar(16);not null;default:'single'"`
 	CorrectOption int            `json:"correct_option" gorm:"not null"`
+	CorrectJSON   []byte         `json:"correct_json" gorm:"type:json"`
+	Weight        float64        `json:"weight" gorm:"not null;default:1"`
 	ImageURL      string         `json:"image_url,omitempty" gorm:"type:varchar(255)"`
 }
 

@@ -24,6 +24,7 @@ func RehydrateAttempt(
 	expiredAt *time.Time,
 	score float64,
 	maxScore float64,
+	pending float64,
 	clientIP string,
 	clientFingerprint string,
 	questionOpenedAt *time.Time,
@@ -57,6 +58,7 @@ func RehydrateAttempt(
 		totalVisible:      len(order),
 		score:             score,
 		maxScore:          maxScore,
+		pending:           pending,
 		clientIP:          clientIP,
 		clientFingerprint: clientFingerprint,
 	}

@@ -112,11 +112,12 @@ func (r *Repo) Submit(ctx context.Context, a *domain.Attempt) error {
 	return r.db.WithContext(ctx).Model(&attemptRow{}).
 		Where("id = ?", row.ID).
 		Updates(map[string]any{
-			"status":       row.Status,
-			"submitted_at": row.SubmittedAt,
-			"score":        row.Score,
-			"max_score":    row.MaxScore,
-			"version":      row.Version,
+			"status":        row.Status,
+			"submitted_at":  row.SubmittedAt,
+			"score":         row.Score,
+			"max_score":     row.MaxScore,
+			"pending_score": row.PendingScore,
+			"version":       row.Version,
 		}).Error
 }
 
@@ -163,6 +164,7 @@ func (r *Repo) ListSummariesByAssignments(ctx context.Context, assignments []dom
 			Duration:     time.Duration(row.DurationSec) * time.Second,
 			Score:        row.Score,
 			MaxScore:     row.MaxScore,
+			PendingScore: row.PendingScore,
 		})
 	}
 	return out, nil
@@ -242,6 +244,7 @@ type attemptRow struct {
 	Seed         int64   `gorm:"not null;default:0"`
 	Score        float64 `gorm:"not null;default:0"`
 	MaxScore     float64 `gorm:"not null;default:0"`
+	PendingScore float64 `gorm:"not null;default:0"`
 
 	ClientIP          string `gorm:"type:varchar(64)"`
 	ClientFingerprint string `gorm:"type:varchar(128)"`
@@ -334,6 +337,7 @@ func toRow(a *domain.Attempt) (*attemptRow, error) {
 		Seed:              a.Seed(),
 		Score:             score,
 		MaxScore:          max,
+		PendingScore:      a.PendingScore(),
 		ClientIP:          a.ClientIP(),
 		ClientFingerprint: a.ClientFingerprint(),
 		QuestionOpenedAt:  openedAt,
@@ -402,6 +406,7 @@ func toDomain(r *attemptRow) (*domain.Attempt, error) {
 		r.ExpiredAt,
 		r.Score,
 		r.MaxScore,
+		r.PendingScore,
 		r.ClientIP,
 		r.ClientFingerprint,
 		r.QuestionOpenedAt,

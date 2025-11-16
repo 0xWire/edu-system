@@ -90,6 +90,7 @@ type AttemptSummaryView struct {
 	DurationSec  int             `json:"duration_sec"`
 	Score        float64         `json:"score"`
 	MaxScore     float64         `json:"max_score"`
+	PendingScore float64         `json:"pending_score,omitempty"`
 	Participant  ParticipantView `json:"participant"`
 }
 
@@ -115,6 +116,7 @@ type AttemptDetailsView struct {
 	DurationSec  int             `json:"duration_sec"`
 	Score        float64         `json:"score"`
 	MaxScore     float64         `json:"max_score"`
+	PendingScore float64         `json:"pending_score,omitempty"`
 	Participant  ParticipantView `json:"participant"`
 }
 
@@ -140,4 +142,14 @@ type AnsweredOptionView struct {
 type CodeAnswerView struct {
 	Lang string `json:"lang"`
 	Body string `json:"body"`
+}
+
+type GradeAnswerRequest struct {
+	QuestionID string  `json:"question_id" validate:"required,uuid4"`
+	Score      float64 `json:"score" validate:"gte=0"`
+	IsCorrect  *bool   `json:"is_correct,omitempty"`
+}
+
+type GradeAnswerResponse struct {
+	Attempt AttemptDetailsView `json:"attempt"`
 }

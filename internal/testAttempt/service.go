@@ -26,8 +26,10 @@ type VisibleOption struct {
 
 type VisibleQuestion struct {
 	ID           string
+	Type         string
 	QuestionText string
 	ImageURL     string
+	Weight       float64
 	Options      []VisibleOption
 }
 
@@ -74,11 +76,14 @@ type AssignmentTemplate struct {
 }
 
 type TemplateQuestion struct {
-	ID            QuestionID
-	QuestionText  string
-	ImageURL      string
-	CorrectOption int
-	Options       []TemplateOption
+	ID             QuestionID
+	QuestionText   string
+	ImageURL       string
+	CorrectOption  int
+	CorrectOptions []int
+	Type           string
+	Weight         float64
+	Options        []TemplateOption
 }
 
 type TemplateOption struct {
@@ -93,6 +98,14 @@ func (tpl *AssignmentTemplate) VisibleQuestions() []VisibleQuestion {
 	}
 	out := make([]VisibleQuestion, 0, len(tpl.Questions))
 	for _, q := range tpl.Questions {
+		qType := q.Type
+		if qType == "" {
+			qType = "single"
+		}
+		weight := q.Weight
+		if weight <= 0 {
+			weight = 1
+		}
 		opts := make([]VisibleOption, 0, len(q.Options))
 		for _, o := range q.Options {
 			opts = append(opts, VisibleOption{
@@ -103,8 +116,10 @@ func (tpl *AssignmentTemplate) VisibleQuestions() []VisibleQuestion {
 		}
 		out = append(out, VisibleQuestion{
 			ID:           string(q.ID),
+			Type:         qType,
 			QuestionText: q.QuestionText,
 			ImageURL:     q.ImageURL,
+			Weight:       weight,
 			Options:      opts,
 		})
 	}
@@ -117,13 +132,28 @@ func (tpl *AssignmentTemplate) QuestionsForScoring() []QuestionForScoring {
 	}
 	out := make([]QuestionForScoring, 0, len(tpl.Questions))
 	for _, q := range tpl.Questions {
+		qType := q.Type
+		if qType == "" {
+			qType = "single"
+		}
+		weight := q.Weight
+		if weight <= 0 {
+			weight = 1
+		}
+		correct := q.CorrectOptions
+		if len(correct) == 0 && q.CorrectOption != 0 {
+			correct = []int{q.CorrectOption}
+		}
 		payload, _ := json.Marshal(map[string]any{
-			"selected": []int{q.CorrectOption},
+			"selected": correct,
 		})
+		if qType == "text" || qType == "code" {
+			payload = nil
+		}
 		out = append(out, QuestionForScoring{
 			ID:          string(q.ID),
-			Type:        "single",
-			Weight:      1.0,
+			Type:        qType,
+			Weight:      weight,
 			CorrectJSON: payload,
 		})
 	}
@@ -433,6 +463,7 @@ func (s *Service) AttemptDetails(ctx context.Context, requester UserID, attemptI
 			Duration:     a.Duration(),
 			Score:        score,
 			MaxScore:     maxScore,
+			PendingScore: a.PendingScore(),
 			Participant:  buildParticipant(a, info),
 		},
 		Answers: make([]AnsweredQuestion, 0, a.Total()),
@@ -528,7 +559,7 @@ func (s *Service) Submit(ctx context.Context, requester *UserID, id AttemptID, v
 			return AttemptView{}, err
 		}
 	}
-	score, max, err := simpleScore(qs, a.Answers())
+	score, max, pending, err := simpleScore(qs, a.Answers())
 	if err != nil {
 		return AttemptView{}, err
 	}
@@ -536,6 +567,7 @@ func (s *Service) Submit(ctx context.Context, requester *UserID, id AttemptID, v
 	if err != nil {
 		return AttemptView{}, err
 	}
+	a.pending = pending
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		return s.repo.Submit(ctx, a)
 	})
@@ -561,6 +593,79 @@ func (s *Service) Cancel(ctx context.Context, requester *UserID, id AttemptID, v
 		return AttemptView{}, err
 	}
 	return attemptToView(a, s.clock.Now()), nil
+}
+
+func (s *Service) GradeAnswer(ctx context.Context, grader UserID, id AttemptID, questionID QuestionID, score float64, isCorrect *bool) (AttemptDetails, error) {
+	a, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return AttemptDetails{}, err
+	}
+	descriptor, err := s.assignments.GetAssignment(ctx, a.Assignment())
+	if err != nil {
+		return AttemptDetails{}, err
+	}
+	if descriptor.OwnerID != grader {
+		return AttemptDetails{}, ErrForbidden
+	}
+	if a.Status() != StatusSubmitted && a.Status() != StatusExpired {
+		return AttemptDetails{}, fmt.Errorf("%w: can grade only submitted/expired attempts", ErrInvalidState)
+	}
+
+	var qs []QuestionForScoring
+	if descriptor.Template != nil {
+		qs = descriptor.Template.QuestionsForScoring()
+	} else {
+		qs, err = s.tests.ListQuestionsForScoring(ctx, string(a.Test()))
+		if err != nil {
+			return AttemptDetails{}, err
+		}
+	}
+	qMap := make(map[QuestionID]QuestionForScoring, len(qs))
+	for _, q := range qs {
+		qMap[QuestionID(q.ID)] = q
+	}
+	qInfo, ok := qMap[questionID]
+	if !ok {
+		return AttemptDetails{}, errors.New("question not found in test")
+	}
+	if score < 0 {
+		score = 0
+	}
+	if score > qInfo.Weight && qInfo.Weight > 0 {
+		score = qInfo.Weight
+	}
+
+	answers := a.Answers()
+	ans, ok := answers[questionID]
+	if !ok {
+		ans = Answer{QuestionID: questionID}
+	}
+	val := score
+	ans.Score = &val
+	if isCorrect != nil {
+		ans.IsCorrect = isCorrect
+	}
+	answers[questionID] = ans
+	a.answers = answers
+	newScore, max, pending, err := simpleScore(qs, answers)
+	if err != nil {
+		return AttemptDetails{}, err
+	}
+	a.score = newScore
+	a.maxScore = max
+	a.pending = pending
+	a.version++
+
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.repo.SaveAnswer(ctx, a, questionID); err != nil {
+			return err
+		}
+		return s.repo.Submit(ctx, a)
+	})
+	if err != nil {
+		return AttemptDetails{}, err
+	}
+	return s.AttemptDetails(ctx, grader, id)
 }
 
 type AttemptView struct {
@@ -623,6 +728,7 @@ type AttemptDetailsHeader struct {
 	Duration     time.Duration
 	Score        float64
 	MaxScore     float64
+	PendingScore float64
 	Participant  Participant
 }
 
@@ -772,8 +878,8 @@ func shuffleOptions(opts []VisibleOption, seed int64, position int) []VisibleOpt
 	return cp
 }
 
-func simpleScore(qs []QuestionForScoring, answers map[QuestionID]Answer) (float64, float64, error) {
-	var score, max float64
+func simpleScore(qs []QuestionForScoring, answers map[QuestionID]Answer) (float64, float64, float64, error) {
+	var score, max, pending float64
 	m := make(map[string]Answer, len(answers))
 	for id, a := range answers {
 		m[string(id)] = a
@@ -782,17 +888,28 @@ func simpleScore(qs []QuestionForScoring, answers map[QuestionID]Answer) (float6
 		max += q.Weight
 		ans, ok := m[q.ID]
 		if !ok {
+			if q.Type == "text" || q.Type == "code" {
+				pending += q.Weight
+			}
+			continue
+		}
+		if ans.Score != nil {
+			score += *ans.Score
+			continue
+		}
+		if q.Type == "text" || q.Type == "code" {
+			pending += q.Weight
 			continue
 		}
 		okEq, err := isCorrectJSON(q.Type, q.CorrectJSON, ans.Payload)
 		if err != nil {
-			return 0, 0, err
+			return 0, 0, 0, err
 		}
 		if okEq {
 			score += q.Weight
 		}
 	}
-	return score, max, nil
+	return score, max, pending, nil
 }
 
 func isCorrectJSON(qType string, expected []byte, payload AnswerPayload) (bool, error) {
