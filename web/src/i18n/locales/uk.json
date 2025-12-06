@@ -166,7 +166,10 @@
       "detailsNoAnswer": "Відповідь відсутня",
       "answerKind": "Тип: {kind}",
       "detailsTextAnswer": "Текстова відповідь",
-      "detailsCodeAnswer": "Відповідь кодом ({lang})"
+      "detailsCodeAnswer": "Відповідь кодом ({lang})",
+      "gradeLabel": "Оцінити (макс {weight})",
+      "gradeAction": "Зберегти бал",
+      "currentScore": "Зараз: {value}/{weight}"
     },
     "launch": {
       "tag": "налаштування запуску",
@@ -271,7 +274,11 @@
     "tag": "питання",
     "answerHint": "Оберіть варіант і натисніть «Надіслати відповідь». Відповідь фіксується одразу.",
     "optionImageAlt": "Ілюстрація варіанту відповіді",
-    "imageAlt": "Ілюстрація до питання"
+    "imageAlt": "Ілюстрація до питання",
+    "textLabel": "Ваша відповідь",
+    "textPlaceholder": "Введіть відповідь…",
+    "codeLabel": "Відповідь кодом",
+    "codePlaceholder": "Вставте або введіть код…"
   },
   "timer": {
     "label": "Залишилось часу",

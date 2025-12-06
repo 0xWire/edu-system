@@ -29,8 +29,10 @@ export interface AttemptView {
 
 export interface QuestionView {
   id: string;
+  type?: 'single' | 'multi' | 'text' | 'code' | string;
   question_text: string;
   image_url?: string;
+  weight?: number;
   options: OptionView[];
 }
 
@@ -91,6 +93,7 @@ export interface AttemptSummary {
   duration_sec: number;
   score: number;
   max_score: number;
+  pending_score?: number;
   participant: AttemptParticipant;
 }
 
@@ -116,6 +119,7 @@ export interface AttemptDetailsMeta {
   duration_sec: number;
   score: number;
   max_score: number;
+  pending_score?: number;
   participant: AttemptParticipant;
 }
 
@@ -124,6 +128,7 @@ export interface AttemptAnswer {
   question_text: string;
   image_url?: string;
   kind: 'single' | 'multi' | 'text' | 'code' | string;
+  weight?: number;
   options?: AttemptAnswerOption[];
   text_answer?: string;
   code_answer?: CodeAnswerView;

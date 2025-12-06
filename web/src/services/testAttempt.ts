@@ -98,4 +98,16 @@ export class TestAttemptService {
       throw error;
     }
   }
+
+  static async gradeAnswer(
+    attemptId: string,
+    data: { question_id: string; score: number; is_correct?: boolean }
+  ): Promise<void> {
+    try {
+      await api.post(`/api/v1/attempts/${attemptId}/grade`, data);
+    } catch (error) {
+      console.error('Failed to grade answer:', error);
+      throw error;
+    }
+  }
 }

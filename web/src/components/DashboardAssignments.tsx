@@ -17,6 +17,8 @@ export default function DashboardAssignments() {
   const [assignmentError, setAssignmentError] = useState(false);
   const [attemptsByAssignment, setAttemptsByAssignment] = useState<Record<string, AttemptSummary[]>>({});
   const [copiedAssignmentId, setCopiedAssignmentId] = useState<string | null>(null);
+  const [gradeDrafts, setGradeDrafts] = useState<Record<string, string>>({});
+  const [gradeSubmitting, setGradeSubmitting] = useState(false);
   const [detailsState, setDetailsState] = useState<{
     open: boolean;
     loading: boolean;
@@ -107,11 +109,12 @@ export default function DashboardAssignments() {
     return parsed.toLocaleString();
   }, []);
 
-  const formatScore = useCallback((score?: number, max?: number) => {
-    if (Number.isFinite(max) && typeof max === 'number' && max > 0 && typeof score === 'number') {
-      const safeScore = Math.round(score * 100) / 100;
+  const formatScore = useCallback((score?: number, max?: number, pending?: number) => {
+    if (Number.isFinite(max) && typeof max === 'number' && max > 0) {
+      const safeScore = typeof score === 'number' ? Math.round(score * 100) / 100 : 0;
       const safeMax = Math.round(max * 100) / 100;
-      return `${safeScore} / ${safeMax}`;
+      const pendingPart = pending && pending > 0 ? ` + ?` : '';
+      return `${safeScore}${pendingPart} / ${safeMax}`;
     }
     return '—';
   }, []);
@@ -121,6 +124,7 @@ export default function DashboardAssignments() {
     try {
       const details = await TestAttemptService.getAttemptDetails(attemptId);
       setDetailsState({ open: true, loading: false, data: details, error: false });
+      setGradeDrafts({});
     } catch (error) {
       console.error('Failed to load attempt details', error);
       setDetailsState({ open: true, loading: false, data: null, error: true });
@@ -129,7 +133,31 @@ export default function DashboardAssignments() {
 
   const closeDetails = useCallback(() => {
     setDetailsState({ open: false, loading: false, data: null, error: false });
+    setGradeDrafts({});
   }, []);
+
+  const handleGradeAnswer = useCallback(
+    async (attemptId: string, questionId: string, maxWeight?: number) => {
+      const raw = gradeDrafts[questionId];
+      const parsed = parseFloat(raw);
+      if (Number.isNaN(parsed)) {
+        return;
+      }
+      const clamped = maxWeight && maxWeight > 0 ? Math.min(Math.max(parsed, 0), maxWeight) : Math.max(parsed, 0);
+      try {
+        setGradeSubmitting(true);
+        await TestAttemptService.gradeAnswer(attemptId, { question_id: questionId, score: clamped });
+        const details = await TestAttemptService.getAttemptDetails(attemptId);
+        setDetailsState({ open: true, loading: false, data: details, error: false });
+      } catch (error) {
+        console.error('Failed to grade answer', error);
+        setDetailsState((prev) => ({ ...prev, error: true }));
+      } finally {
+        setGradeSubmitting(false);
+      }
+    },
+    [gradeDrafts]
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-slate-100">
@@ -244,11 +272,11 @@ export default function DashboardAssignments() {
                           {attempts.map((attempt) => {
                             const statusKey = attempt.status as keyof typeof attemptStatusLabels;
                             const statusLabel = attemptStatusLabels[statusKey] ?? attempt.status;
-                            const participantKind =
-                              attempt.participant.kind === 'guest'
-                                ? t('dashboard.assignments.labels.guest')
-                                : t('dashboard.assignments.labels.registered');
-                            return (
+                          const participantKind =
+                            attempt.participant.kind === 'guest'
+                              ? t('dashboard.assignments.labels.guest')
+                              : t('dashboard.assignments.labels.registered');
+                          return (
                               <tr key={attempt.attempt_id} className="align-top">
                                 <td className="py-3 pr-6">
                                   <div className="flex flex-col">
@@ -261,7 +289,9 @@ export default function DashboardAssignments() {
                                     </span>
                                   </div>
                                 </td>
-                                <td className="py-3 pr-6 text-white">{formatScore(attempt.score, attempt.max_score)}</td>
+                                <td className="py-3 pr-6 text-white">
+                                  {formatScore(attempt.score, attempt.max_score, attempt.pending_score)}
+                                </td>
                                 <td className="py-3 pr-6">
                                   <span className="inline-flex items-center rounded-full bg-indigo-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-indigo-200">
                                     {statusLabel}
@@ -336,7 +366,8 @@ export default function DashboardAssignments() {
                           {statusLabel}
                         </span>
                         <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100">
-                          {t('dashboard.assignments.columns.score')}: {formatScore(attempt.score, attempt.max_score)}
+                          {t('dashboard.assignments.columns.score')}:{' '}
+                          {formatScore(attempt.score, attempt.max_score, attempt.pending_score)}
                         </span>
                         <span className="text-xs text-slate-300">
                           {t('dashboard.assignments.columns.started')}: {formatDateTime(attempt.started_at)}
@@ -360,6 +391,9 @@ export default function DashboardAssignments() {
                         (answer.options && answer.options.some((opt) => opt.selected)) ||
                         !!answer.text_answer ||
                         !!answer.code_answer;
+                      const maxWeight = answer.weight ?? 0;
+                      const inputId = `${answer.question_id}-${index}-score`;
+                      const draftVal = gradeDrafts[answer.question_id] ?? (answer.score != null ? String(answer.score) : '');
                       return (
                         <div
                           key={`${answer.question_id}-${index}`}
@@ -450,6 +484,46 @@ export default function DashboardAssignments() {
                               <pre className="mt-2 overflow-x-auto rounded-lg bg-slate-950/80 p-3 text-xs text-emerald-100">
                                 {answer.code_answer.body}
                               </pre>
+                            </div>
+                          )}
+
+                          {(answer.kind === 'text' || answer.kind === 'code') && (
+                            <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-slate-900/40 px-4 py-3 text-sm text-slate-200">
+                              <div className="flex flex-col gap-1">
+                                <label htmlFor={inputId} className="text-xs uppercase tracking-[0.2em] text-indigo-200">
+                                  {t('dashboard.assignments.gradeLabel', { weight: maxWeight || 0 })}
+                                </label>
+                                <input
+                                  id={inputId}
+                                  type="number"
+                                  min={0}
+                                  max={maxWeight || undefined}
+                                  step={0.1}
+                                  value={draftVal}
+                                  onChange={(e) =>
+                                    setGradeDrafts((prev) => ({
+                                      ...prev,
+                                      [answer.question_id]: e.target.value
+                                    }))
+                                  }
+                                  className="w-32 rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                disabled={gradeSubmitting}
+                                onClick={() => {
+                                  void handleGradeAnswer(detailsState.data!.attempt.attempt_id, answer.question_id, maxWeight);
+                                }}
+                                className="rounded-lg bg-indigo-500 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-indigo-500/30 transition hover:bg-indigo-600 disabled:opacity-60"
+                              >
+                                {gradeSubmitting ? t('common.actions.submitting') : t('dashboard.assignments.gradeAction')}
+                              </button>
+                              {typeof answer.score === 'number' && (
+                                <span className="text-xs text-emerald-200">
+                                  {t('dashboard.assignments.currentScore', { value: answer.score, weight: maxWeight || answer.score })}
+                                </span>
+                              )}
                             </div>
                           )}
                         </div>

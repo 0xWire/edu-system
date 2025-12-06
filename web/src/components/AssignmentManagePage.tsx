@@ -234,11 +234,12 @@ export default function AssignmentManagePage({ assignmentId }: AssignmentManageP
     [language]
   );
 
-  const formatScore = useCallback((score?: number, max?: number) => {
-    if (Number.isFinite(max) && typeof max === 'number' && max > 0 && typeof score === 'number') {
-      const safeScore = Math.round(score * 100) / 100;
+  const formatScore = useCallback((score?: number, max?: number, pending?: number) => {
+    if (Number.isFinite(max) && typeof max === 'number' && max > 0) {
+      const safeScore = typeof score === 'number' ? Math.round(score * 100) / 100 : 0;
       const safeMax = Math.round(max * 100) / 100;
-      return `${safeScore} / ${safeMax}`;
+      const pendingPart = pending && pending > 0 ? ` + ?` : '';
+      return `${safeScore}${pendingPart} / ${safeMax}`;
     }
     return '—';
   }, []);
@@ -425,7 +426,9 @@ export default function AssignmentManagePage({ assignmentId }: AssignmentManageP
                                 </span>
                               </div>
                             </td>
-                            <td className="py-3 pr-6 text-white">{formatScore(attempt.score, attempt.max_score)}</td>
+                            <td className="py-3 pr-6 text-white">
+                              {formatScore(attempt.score, attempt.max_score, attempt.pending_score)}
+                            </td>
                             <td className="py-3 pr-6">
                               <span className="inline-flex items-center rounded-full bg-indigo-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-indigo-200">
                                 {statusLabel}
@@ -517,7 +520,7 @@ export default function AssignmentManagePage({ assignmentId }: AssignmentManageP
                           {statusLabel}
                         </span>
                         <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100">
-                          {t('dashboard.assignments.columns.score')}: {formatScore(attempt.score, attempt.max_score)}
+                          {t('dashboard.assignments.columns.score')}: {formatScore(attempt.score, attempt.max_score, attempt.pending_score)}
                         </span>
                         <span className="text-xs text-slate-300">
                           {t('dashboard.assignments.columns.started')}: {formatDateTime(attempt.started_at)}

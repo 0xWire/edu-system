@@ -80,7 +80,7 @@ type Question struct {
 	ID            string   `json:"id"`
 	Author        string   `json:"author,omitempty"`
 	QuestionText  string   `json:"question_text" binding:"required"`
-	Options       []Answer `json:"options" binding:"required,min=2"`
+	Options       []Answer `json:"options" binding:"required,min=0"`
 	CorrectOption int      `json:"correct_option"`
 	CorrectOptions []int   `json:"correct_options,omitempty"`
 	Type          string   `json:"type,omitempty"`   // single | multi | text | code

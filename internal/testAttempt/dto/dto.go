@@ -46,8 +46,10 @@ type NextQuestionResponse struct {
 
 type QuestionView struct {
 	ID           string       `json:"id"`
+	Type         string       `json:"type,omitempty"`
 	QuestionText string       `json:"question_text"`
 	ImageURL     string       `json:"image_url,omitempty"`
+	Weight       float64      `json:"weight,omitempty"`
 	Options      []OptionView `json:"options"`
 }
 
@@ -125,6 +127,7 @@ type AnsweredQuestionView struct {
 	QuestionText string               `json:"question_text"`
 	ImageURL     string               `json:"image_url,omitempty"`
 	Kind         string               `json:"kind"`
+	Weight       float64              `json:"weight,omitempty"`
 	Options      []AnsweredOptionView `json:"options,omitempty"`
 	TextAnswer   string               `json:"text_answer,omitempty"`
 	CodeAnswer   *CodeAnswerView      `json:"code_answer,omitempty"`

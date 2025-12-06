@@ -527,6 +527,7 @@ func (s *Service) AttemptDetails(ctx context.Context, requester UserID, attemptI
 			QuestionText: vq.QuestionText,
 			ImageURL:     vq.ImageURL,
 			Kind:         kind,
+			Weight:       vq.Weight,
 			Options:      optionViews,
 			TextAnswer:   textAnswer,
 			CodeAnswer:   codeAnswer,
@@ -697,8 +698,10 @@ type AttemptPolicyView struct {
 
 type QuestionView struct {
 	ID           string       `json:"id"`
+	Type         string       `json:"type,omitempty"`
 	QuestionText string       `json:"question_text"`
 	ImageURL     string       `json:"image_url,omitempty"`
+	Weight       float64      `json:"weight,omitempty"`
 	Options      []OptionView `json:"options"`
 }
 
@@ -743,6 +746,7 @@ type AnsweredQuestion struct {
 	QuestionText string
 	ImageURL     string
 	Kind         string
+	Weight       float64
 	Options      []AnsweredOption
 	TextAnswer   string
 	CodeAnswer   *CodePayload
@@ -804,8 +808,10 @@ func toPolicyView(p AttemptPolicy) AttemptPolicyView {
 func makeQuestionView(v VisibleQuestion, opts []VisibleOption) QuestionView {
 	out := QuestionView{
 		ID:           v.ID,
+		Type:         v.Type,
 		QuestionText: v.QuestionText,
 		ImageURL:     v.ImageURL,
+		Weight:       v.Weight,
 		Options:      make([]OptionView, 0, len(opts)),
 	}
 	for _, o := range opts {

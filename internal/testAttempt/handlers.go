@@ -298,6 +298,7 @@ func (h *Handlers) Details(c *gin.Context) {
 		if answer.CodeAnswer != nil {
 			item.CodeAnswer = &dto.CodeAnswerView{Lang: answer.CodeAnswer.Lang, Body: answer.CodeAnswer.Body}
 		}
+		item.Weight = answer.Weight
 		for _, opt := range answer.Options {
 			item.Options = append(item.Options, dto.AnsweredOptionView{
 				ID:         opt.ID,

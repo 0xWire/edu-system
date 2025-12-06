@@ -10,6 +10,9 @@ export interface Question {
   question_text: string;
   options: Answer[];
   correct_option: number;
+  correct_options?: number[];
+  type?: 'single' | 'multi' | 'text' | 'code';
+  weight?: number;
   image_url?: string;
 }
 
@@ -32,6 +35,9 @@ export interface QuestionFormData {
   question_text: string;
   options: AnswerFormData[];
   correct_option: number;
+  correct_options?: number[];
+  type: 'single' | 'multi' | 'text' | 'code';
+  weight?: number;
   image_url?: string;
   image_preview?: string;
 }
@@ -92,6 +98,9 @@ export interface QuestionResponse {
   question_text: string;
   options: OptionResponse[];
   correct_option: number;
+  correct_options?: number[];
+  type?: 'single' | 'multi' | 'text' | 'code';
+  weight?: number;
   image_url?: string;
 }
 

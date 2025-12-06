@@ -207,7 +207,10 @@
       "detailsNoAnswer": "No answer provided",
       "answerKind": "Type: {kind}",
       "detailsTextAnswer": "Text answer",
-      "detailsCodeAnswer": "Code answer ({lang})"
+      "detailsCodeAnswer": "Code answer ({lang})",
+      "gradeLabel": "Grade (max {weight})",
+      "gradeAction": "Save score",
+      "currentScore": "Current: {value}/{weight}"
     },
     "modal": {
       "tag": "New test",
@@ -301,7 +304,11 @@
     "optionImageAlt": "Answer option illustration",
     "imageAlt": "Question illustration",
     "timeLimitLabel": "Question timer",
-    "timeRemaining": "Time left: {time}"
+    "timeRemaining": "Time left: {time}",
+    "textLabel": "Your answer",
+    "textPlaceholder": "Enter your response here…",
+    "codeLabel": "Code answer",
+    "codePlaceholder": "Paste or type your code…"
   },
   "timer": {
     "label": "Time remaining",

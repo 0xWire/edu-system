@@ -44,6 +44,9 @@ export class TestService {
         payload.questions = testData.questions.map((q: QuestionFormData) => ({
           question_text: q.question_text,
           correct_option: q.correct_option,
+          correct_options: q.correct_options && q.correct_options.length ? q.correct_options : undefined,
+          type: q.type,
+          weight: q.weight,
           image_url: q.image_url,
           options: q.options.map((opt: AnswerFormData, idx: number) => ({
             answer: idx,
