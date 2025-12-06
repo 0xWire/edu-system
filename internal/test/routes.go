@@ -10,8 +10,10 @@ func RegisterRoutes(v1 gin.IRouter, h *TestHandler, jwtAuth gin.HandlerFunc) {
 	protected.Use(jwtAuth)
 	{
 		protected.GET("", h.GetAllTests)
-		protected.GET("/:id", h.GetTest)
+		protected.GET("/template/csv", h.DownloadCSVTemplate)
+		protected.POST("/import", h.ImportFromCSV)
 		protected.POST("", h.CreateTest)
+		protected.GET("/:id", h.GetTest)
 		protected.PUT("/:id", h.UpdateTest)
 		protected.DELETE("/:id", h.DeleteTest)
 	}

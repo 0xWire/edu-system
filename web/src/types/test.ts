@@ -53,6 +53,12 @@ export interface CreateTestResponse {
   error?: string;
 }
 
+export interface ImportTestResponse {
+  test_id: string;
+  title: string;
+  created_questions: number;
+}
+
 export type ScoreRevealMode = 'never' | 'after_submit' | 'always';
 
 export interface AttemptPolicyConfig {

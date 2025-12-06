@@ -7,6 +7,7 @@ import { AssignmentService } from '@/services/assignment';
 import { TestAttemptService } from '@/services/testAttempt';
 import type { AssignmentView } from '@/types/assignment';
 import type { AttemptSummary, AttemptDetails } from '@/types/testAttempt';
+import MathText from './MathText';
 
 type CopyState = 'idle' | 'copied';
 
@@ -554,7 +555,9 @@ export default function AssignmentManagePage({ assignmentId }: AssignmentManageP
                               <p className="text-xs uppercase tracking-[0.3em] text-indigo-200">
                                 {t('testsDetail.questionLabel', { index: index + 1 })}
                               </p>
-                              <h4 className="mt-1 text-lg font-semibold text-white">{answer.question_text}</h4>
+                              <h4 className="mt-1 text-lg font-semibold text-white">
+                                <MathText text={answer.question_text} />
+                              </h4>
                               {answer.kind && (
                                 <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
                                   {t('dashboard.assignments.answerKind', { kind: answer.kind })}
@@ -596,7 +599,7 @@ export default function AssignmentManagePage({ assignmentId }: AssignmentManageP
                                   }`}
                                 >
                                   <div>
-                                    <p className="text-sm font-medium text-white">{opt.option_text}</p>
+                                    <MathText text={opt.option_text} className="text-sm font-medium text-white" />
                                     {opt.image_url && (
                                       <div className="mt-2 overflow-hidden rounded-lg border border-white/10">
                                         <img

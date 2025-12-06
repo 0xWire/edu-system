@@ -5,7 +5,8 @@ import type {
   CreateTestResponse,
   UpdateTestRequest,
   QuestionFormData,
-  AnswerFormData
+  AnswerFormData,
+  ImportTestResponse
 } from '@/types/test';
 
 export class TestService {
@@ -102,6 +103,40 @@ export class TestService {
     } catch (error) {
       console.error('Failed to delete test:', error);
       return false;
+    }
+  }
+
+  static async downloadTemplate(): Promise<Blob> {
+    const response = await api.get('/api/v1/tests/template/csv', {
+      responseType: 'blob'
+    });
+    return response.data as Blob;
+  }
+
+  static async importFromCsv(
+    file: File
+  ): Promise<{ success: boolean; data?: ImportTestResponse; error?: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await api.post('/api/v1/tests/import', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      const payload = (response.data?.data ?? response.data) as ImportTestResponse;
+      return { success: true, data: payload };
+    } catch (error) {
+      console.error('Failed to import test:', error);
+      if (error instanceof Error && 'response' in error) {
+        const axiosErr = error as { response?: { data?: { message?: string } } };
+        return {
+          success: false,
+          error: axiosErr.response?.data?.message
+        };
+      }
+      return { success: false };
     }
   }
 }

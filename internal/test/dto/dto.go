@@ -9,6 +9,12 @@ type CreateTestRequest struct {
 	Questions   []Question `json:"questions" binding:"required,min=1"`
 }
 
+type ImportTestResponse struct {
+	TestID           string `json:"test_id"`
+	Title            string `json:"title"`
+	CreatedQuestions int    `json:"created_questions"`
+}
+
 type GetTestResponse struct {
 	Author         string             `json:"author"`
 	TestID         string             `json:"test_id"`
@@ -77,26 +83,26 @@ type AttemptPolicyPayload struct {
 }
 
 type Question struct {
-	ID            string   `json:"id"`
-	Author        string   `json:"author,omitempty"`
-	QuestionText  string   `json:"question_text" binding:"required"`
-	Options       []Answer `json:"options" binding:"required,min=0"`
-	CorrectOption int      `json:"correct_option"`
-	CorrectOptions []int   `json:"correct_options,omitempty"`
-	Type          string   `json:"type,omitempty"`   // single | multi | text | code
-	Weight        float64  `json:"weight,omitempty"` // default 1
-	ImageURL      string   `json:"image_url,omitempty"`
+	ID             string   `json:"id"`
+	Author         string   `json:"author,omitempty"`
+	QuestionText   string   `json:"question_text" binding:"required"`
+	Options        []Answer `json:"options" binding:"required,min=0"`
+	CorrectOption  int      `json:"correct_option"`
+	CorrectOptions []int    `json:"correct_options,omitempty"`
+	Type           string   `json:"type,omitempty"`   // single | multi | text | code
+	Weight         float64  `json:"weight,omitempty"` // default 1
+	ImageURL       string   `json:"image_url,omitempty"`
 }
 
 type QuestionResponse struct {
-	ID            string           `json:"id"`
-	QuestionText  string           `json:"question_text"`
-	Options       []OptionResponse `json:"options"`
-	CorrectOption int              `json:"correct_option"`
-	CorrectOptions []int           `json:"correct_options,omitempty"`
-	Type          string           `json:"type"`
-	Weight        float64          `json:"weight"`
-	ImageURL      string           `json:"image_url,omitempty"`
+	ID             string           `json:"id"`
+	QuestionText   string           `json:"question_text"`
+	Options        []OptionResponse `json:"options"`
+	CorrectOption  int              `json:"correct_option"`
+	CorrectOptions []int            `json:"correct_options,omitempty"`
+	Type           string           `json:"type"`
+	Weight         float64          `json:"weight"`
+	ImageURL       string           `json:"image_url,omitempty"`
 }
 
 type Answer struct {

@@ -7,6 +7,7 @@ import { TestService } from '@/services/test';
 import { AssignmentService } from '@/services/assignment';
 import type { GetTestResponse } from '@/types/test';
 import TestLaunchSettingsModal, { LaunchSettingsFormValues } from './TestLaunchSettingsModal';
+import TestCsvImportPanel from './TestCsvImportPanel';
 
 export default function DashboardTests() {
   const router = useRouter();
@@ -238,14 +239,22 @@ export default function DashboardTests() {
                 <p className="mt-2 text-3xl font-semibold text-white">{item.value}</p>
                 <p className="mt-1 text-xs text-slate-300">{item.helper}</p>
               </div>
-            ))}
-          </section>
+          ))}
+        </section>
 
-          <section className="mb-10 rounded-3xl border border-white/10 bg-slate-950/70 shadow-2xl shadow-black/30">
-            <div className="flex flex-col gap-4 px-6 py-6 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-base font-semibold text-white">
-                  {hasConnectionError ? t('dashboard.connection.errorTitle') : t('dashboard.connection.successTitle')}
+        <div className="mb-10">
+          <TestCsvImportPanel
+            onImported={() => {
+              void fetchTests();
+            }}
+          />
+        </div>
+
+        <section className="mb-10 rounded-3xl border border-white/10 bg-slate-950/70 shadow-2xl shadow-black/30">
+          <div className="flex flex-col gap-4 px-6 py-6 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-base font-semibold text-white">
+                {hasConnectionError ? t('dashboard.connection.errorTitle') : t('dashboard.connection.successTitle')}
                 </p>
                 <p className="text-sm text-slate-200">
                   {hasConnectionError
@@ -357,8 +366,8 @@ export default function DashboardTests() {
       <TestLaunchSettingsModal
         open={Boolean(configuringTest)}
         test={configuringTest}
-        loading={configuringLoading}
-        error={configuringError}
+        submitting={configuringLoading}
+        errorMessage={configuringError}
         onClose={handleCloseLaunchModal}
         onSubmit={handleLaunchSubmit}
       />

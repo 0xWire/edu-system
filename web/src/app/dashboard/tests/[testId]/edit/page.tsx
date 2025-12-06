@@ -1,20 +1,21 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { use, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import CreateTestForm from '@/components/CreateTestForm';
 import { TestService } from '@/services/test';
-import type { QuestionFormData, GetTestResponse } from '@/types/test';
+import type { QuestionFormData, GetTestResponse, AnswerFormData } from '@/types/test';
 import { useI18n } from '@/contexts/LanguageContext';
 
 interface PageProps {
-  params: {
+  params: Promise<{
     testId: string;
-  };
+  }>;
 }
 
 export default function EditTestPage({ params }: PageProps) {
+  const { testId } = use(params);
   const router = useRouter();
   const { t } = useI18n();
   const [loading, setLoading] = useState(true);
@@ -26,7 +27,7 @@ export default function EditTestPage({ params }: PageProps) {
     const load = async () => {
       try {
         setLoading(true);
-        const data = await TestService.getTest(params.testId);
+        const data = await TestService.getTest(testId);
         if (!mounted) return;
         setTest(data);
         setError(null);
@@ -48,23 +49,46 @@ export default function EditTestPage({ params }: PageProps) {
     return () => {
       mounted = false;
     };
-  }, [params.testId, t]);
+  }, [testId, t]);
 
   const initialFormData = useMemo(() => {
     if (!test) {
       return undefined;
     }
-    const questions: QuestionFormData[] = test.questions.map((question) => ({
-      question_text: question.question_text,
-      correct_option: question.correct_option,
-      image_url: question.image_url ?? '',
-      image_preview: question.image_url ?? '',
-      options: question.options.map((option) => ({
-        answer_text: option.option_text,
-        image_url: option.image_url ?? '',
-        image_preview: option.image_url ?? ''
-      }))
-    }));
+    const ensureOptions = (options?: { option_text: string; image_url?: string }[]): AnswerFormData[] => {
+      const mapped =
+        options?.map((option) => ({
+          answer_text: option.option_text,
+          image_url: option.image_url ?? '',
+          image_preview: option.image_url ?? ''
+        })) ?? [];
+      while (mapped.length < 2) {
+        mapped.push({ answer_text: '', image_url: '', image_preview: '' });
+      }
+      return mapped;
+    };
+
+    const questions: QuestionFormData[] = test.questions.map((question) => {
+      const type = question.type ?? 'single';
+      const weight = typeof question.weight === 'number' && question.weight > 0 ? question.weight : 1;
+      const correctOptions =
+        question.correct_options && question.correct_options.length
+          ? question.correct_options
+          : type === 'multi'
+            ? [question.correct_option].filter((v) => typeof v === 'number')
+            : [];
+
+      return {
+        question_text: question.question_text,
+        correct_option: question.correct_option,
+        correct_options: correctOptions,
+        type,
+        weight,
+        image_url: question.image_url ?? '',
+        image_preview: question.image_url ?? '',
+        options: ensureOptions(question.options)
+      };
+    });
     return {
       title: test.title,
       description: test.description,
@@ -73,7 +97,7 @@ export default function EditTestPage({ params }: PageProps) {
   }, [test]);
 
   const handleSuccess = () => {
-    router.push(`/dashboard/tests/${params.testId}`);
+    router.push(`/dashboard/tests/${testId}`);
   };
 
   const handleCancel = () => {
@@ -102,7 +126,7 @@ export default function EditTestPage({ params }: PageProps) {
           ) : (
             <CreateTestForm
               mode="edit"
-              testId={params.testId}
+              testId={testId}
               initialFormData={initialFormData}
               initialAuthor={test.author}
               onSuccess={handleSuccess}

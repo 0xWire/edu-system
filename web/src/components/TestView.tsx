@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { TestService } from '@/services/test';
 import { GetTestResponse, Question } from '@/types/test';
+import MathText from './MathText';
 
 interface TestViewProps {
   testId: string;
@@ -30,13 +31,8 @@ export default function TestView({ testId, onBack, mode = 'view' }: TestViewProp
     setError(null);
 
     try {
-      const response = await TestService.getTest(testId);
-      
-      if (response.success && response.data) {
-        setTest(response.data);
-      } else {
-        setError(response.error || 'Failed to load test');
-      }
+      const data = await TestService.getTest(testId);
+      setTest(data);
     } catch (err) {
       setError('An unexpected error occurred');
     } finally {
@@ -159,7 +155,7 @@ export default function TestView({ testId, onBack, mode = 'view' }: TestViewProp
               return (
                 <div key={index} className="text-left border border-gray-200 rounded-lg p-4">
                   <h4 className="font-medium text-gray-900 mb-2">
-                    Question {index + 1}: {question.question_text}
+                    Question {index + 1}: <MathText text={question.question_text} />
                   </h4>
                   <div className="space-y-2">
                     {question.options.map((option, optIndex) => {
@@ -175,7 +171,7 @@ export default function TestView({ testId, onBack, mode = 'view' }: TestViewProp
                       
                       return (
                         <div key={optIndex} className={className}>
-                          {option.answer_text}
+                          <MathText text={option.option_text} />
                           {optIndex === question.correct_option && " ✓"}
                           {optIndex === userAnswer && optIndex !== question.correct_option && " ✗"}
                         </div>
@@ -233,7 +229,7 @@ export default function TestView({ testId, onBack, mode = 'view' }: TestViewProp
 
           <div className="mb-8">
             <h3 className="text-lg font-medium text-gray-900 mb-4">
-              {currentQuestion.question_text}
+              <MathText text={currentQuestion.question_text} />
             </h3>
             
             {currentQuestion.image_url && (
@@ -260,7 +256,9 @@ export default function TestView({ testId, onBack, mode = 'view' }: TestViewProp
                     onChange={() => handleAnswerSelect(currentQuestionIndex, optionIndex)}
                     className="text-indigo-600 focus:ring-indigo-500"
                   />
-                  <span className="text-gray-900">{option.answer_text}</span>
+                  <span className="text-gray-900">
+                    <MathText text={option.option_text} />
+                  </span>
                 </label>
               ))}
             </div>
@@ -313,7 +311,9 @@ export default function TestView({ testId, onBack, mode = 'view' }: TestViewProp
           <div className="flex justify-between items-start mb-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{test.title}</h1>
-              <p className="text-gray-600 mt-2">{test.description}</p>
+              <p className="text-gray-600 mt-2">
+                <MathText text={test.description} />
+              </p>
             </div>
             {onBack && (
               <button
@@ -333,7 +333,7 @@ export default function TestView({ testId, onBack, mode = 'view' }: TestViewProp
           {test.questions.map((question, index) => (
             <div key={index} className="border-b border-gray-200 pb-6 last:border-b-0">
               <h3 className="text-lg font-medium text-gray-900 mb-4">
-                Question {index + 1}: {question.question_text}
+                Question {index + 1}: <MathText text={question.question_text} />
               </h3>
               
               {question.image_url && (
@@ -356,7 +356,9 @@ export default function TestView({ testId, onBack, mode = 'view' }: TestViewProp
                         : 'bg-gray-50 border border-gray-200'
                     }`}
                   >
-                    <span className="text-gray-900">{option.answer_text}</span>
+                    <span className="text-gray-900">
+                      <MathText text={option.option_text} />
+                    </span>
                     {optionIndex === question.correct_option && (
                       <span className="ml-2 text-green-600 font-medium">✓ Correct</span>
                     )}

@@ -97,6 +97,16 @@
       "successDescription": "Loaded {count} tests successfully",
       "serviceOnline": "Service online"
     },
+    "importer": {
+      "title": "Import from CSV",
+      "subtitle": "Download the template, fill in your questions and upload it to create a test instantly.",
+      "download": "Download CSV template",
+      "selectFile": "Upload filled template",
+      "uploading": "Importing…",
+      "helper": "Use | or ; to separate answer options and correct positions. Allowed types: single, multi, text, code. LaTeX is supported when wrapped in $...$ (e.g. $\\int x^2 dx$).",
+      "success": "Imported {count} questions into \"{title}\"",
+      "error": "Import failed. Please check the CSV format and try again."
+    },
     "library": {
       "title": "Test library",
       "subtitle": "Select a test to review or share with learners.",
