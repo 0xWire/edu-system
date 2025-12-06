@@ -6,6 +6,7 @@ import { useI18n } from '@/contexts/LanguageContext';
 import { TestService } from '@/services/test';
 import { AssignmentService } from '@/services/assignment';
 import type { GetTestResponse } from '@/types/test';
+import type { AssignmentFieldSpec } from '@/types/assignment';
 import TestLaunchSettingsModal, { LaunchSettingsFormValues } from './TestLaunchSettingsModal';
 import TestCsvImportPanel from './TestCsvImportPanel';
 
@@ -98,7 +99,7 @@ export default function DashboardTests() {
   );
 
   const handleLaunchSubmit = useCallback(
-    async (values: LaunchSettingsFormValues) => {
+    async (values: LaunchSettingsFormValues, meta: { sessionTitle?: string; fields: AssignmentFieldSpec[] }) => {
       if (!configuringTest) {
         return;
       }
@@ -141,15 +142,16 @@ export default function DashboardTests() {
       try {
         const assignment = await AssignmentService.createAssignment({
           test_id: configuringTest.test_id,
-          title: configuringTest.title
+          title: meta.sessionTitle?.trim() || configuringTest.title,
+          fields: meta.fields
         });
         setTests((prev) =>
           prev.map((item) =>
             item.test_id === configuringTest.test_id
               ? {
-                  ...item,
-                  duration_sec: durationSec,
-                  allow_guests: values.allowGuests,
+                ...item,
+                duration_sec: durationSec,
+                allow_guests: values.allowGuests,
                   attempt_policy: {
                     shuffle_questions: values.shuffleQuestions,
                     shuffle_answers: values.shuffleAnswers,

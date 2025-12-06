@@ -1,14 +1,18 @@
 package testAttempt
 
 import (
+	"bytes"
+	"encoding/csv"
 	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/xuri/excelize/v2"
 
 	dto "edu-system/internal/testAttempt/dto"
 )
@@ -241,6 +245,136 @@ func (h *Handlers) ListByAssignment(c *gin.Context) {
 		})
 	}
 	c.JSON(http.StatusOK, resp)
+}
+
+// GET /v1/attempts/export?assignment_id=&format=csv|xlsx
+func (h *Handlers) Export(c *gin.Context) {
+	assignmentID := c.Query("assignment_id")
+	if assignmentID == "" {
+		c.JSON(http.StatusBadRequest, errJSON("missing_assignment_id", "assignment_id query parameter is required"))
+		return
+	}
+	ownerID, ok := userIDFromCtx(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, errJSON("unauthorized", "authentication required"))
+		return
+	}
+	attempts, err := h.svc.ListAssignmentAttempts(c, UserID(ownerID), AssignmentID(assignmentID))
+	if err != nil {
+		writeDomainErr(c, err)
+		return
+	}
+
+	format := strings.ToLower(strings.TrimSpace(c.DefaultQuery("format", "csv")))
+	if format != "xlsx" {
+		format = "csv"
+	}
+
+	filename := fmt.Sprintf("assignment_%s.%s", assignmentID, format)
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+
+	if format == "csv" {
+		c.Header("Content-Type", "text/csv")
+		buf := &bytes.Buffer{}
+		w := csv.NewWriter(buf)
+		_ = w.Write([]string{"Attempt ID", "Participant", "Type", "Status", "Score", "Max Score", "Pending", "Started At", "Submitted At", "Expired At", "Duration Sec"})
+		for _, a := range attempts {
+			participant := buildParticipantName(a)
+			started := a.StartedAt.Format(time.RFC3339)
+			submitted := ""
+			expired := ""
+			if a.SubmittedAt != nil {
+				submitted = a.SubmittedAt.Format(time.RFC3339)
+			}
+			if a.ExpiredAt != nil {
+				expired = a.ExpiredAt.Format(time.RFC3339)
+			}
+			record := []string{
+				string(a.AttemptID),
+				participant.Name,
+				participant.Kind,
+				string(a.Status),
+				fmt.Sprintf("%.2f", a.Score),
+				fmt.Sprintf("%.2f", a.MaxScore),
+				fmt.Sprintf("%.2f", a.PendingScore),
+				started,
+				submitted,
+				expired,
+				fmt.Sprintf("%d", int(a.Duration/time.Second)),
+			}
+			_ = w.Write(record)
+		}
+		w.Flush()
+		c.String(http.StatusOK, buf.String())
+		return
+	}
+
+	// XLSX
+	f := excelize.NewFile()
+	sheet := f.GetSheetName(f.GetActiveSheetIndex())
+	header := []string{"Attempt ID", "Participant", "Type", "Status", "Score", "Max Score", "Pending", "Started At", "Submitted At", "Expired At", "Duration Sec"}
+	for i, hname := range header {
+		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
+		_ = f.SetCellValue(sheet, cell, hname)
+	}
+	for rowIdx, a := range attempts {
+		r := rowIdx + 2
+		participant := buildParticipantName(a)
+		values := []interface{}{
+			string(a.AttemptID),
+			participant.Name,
+			participant.Kind,
+			string(a.Status),
+			fmt.Sprintf("%.2f", a.Score),
+			fmt.Sprintf("%.2f", a.MaxScore),
+			fmt.Sprintf("%.2f", a.PendingScore),
+			a.StartedAt.Format(time.RFC3339),
+		}
+		if a.SubmittedAt != nil {
+			values = append(values, a.SubmittedAt.Format(time.RFC3339))
+		} else {
+			values = append(values, "")
+		}
+		if a.ExpiredAt != nil {
+			values = append(values, a.ExpiredAt.Format(time.RFC3339))
+		} else {
+			values = append(values, "")
+		}
+		values = append(values, int(a.Duration/time.Second))
+
+		for colIdx, val := range values {
+			cell, _ := excelize.CoordinatesToCellName(colIdx+1, r)
+			_ = f.SetCellValue(sheet, cell, val)
+		}
+	}
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	if err := f.Write(c.Writer); err != nil {
+		c.JSON(http.StatusInternalServerError, errJSON("export_failed", err.Error()))
+		return
+	}
+}
+
+func buildParticipantName(a AttemptSummary) dto.ParticipantView {
+	participant := dto.ParticipantView{}
+	if a.User != nil {
+		participant.Kind = "user"
+		uid := uint64(a.User.ID)
+		participant.UserID = &uid
+		participant.Name = a.User.FullName()
+	} else if a.UserID != 0 {
+		participant.Kind = "user"
+		uid := uint64(a.UserID)
+		participant.UserID = &uid
+		participant.Name = fmt.Sprintf("User #%d", uid)
+	} else {
+		participant.Kind = "guest"
+		if a.GuestName != nil && *a.GuestName != "" {
+			participant.Name = *a.GuestName
+		} else {
+			participant.Name = "Guest"
+		}
+	}
+	return participant
 }
 
 // GET /v1/attempts/:id/details

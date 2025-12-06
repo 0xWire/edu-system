@@ -23,7 +23,7 @@
       "finish": "Finish attempt",
       "cancel": "Cancel",
       "startOver": "Start over",
-      "openStudentView": "Open student view"
+      "remove": "Remove"
     },
     "helpers": {
       "exampleName": "e.g. Jane Doe"
@@ -145,16 +145,21 @@
         "policy": "Attempt policy"
       },
       "fields": {
-        "duration": "Duration (minutes, 0 = unlimited)",
-        "maxAttempts": "Attempts per participant (0 = unlimited)",
-        "maxQuestions": "Questions in this attempt (0 = all)",
-        "questionTime": "Per-question time limit (seconds, 0 = unlimited)",
-        "attemptTime": "Overall time limit (minutes, 0 = unlimited)",
-        "allowGuests": "Allow guest access",
-        "shuffleQuestions": "Shuffle question order",
-        "shuffleAnswers": "Shuffle answer options",
-        "requireAll": "Require all questions answered",
-        "lockOnConfirm": "Lock answer after submission",
+      "duration": "Duration (minutes, 0 = unlimited)",
+      "maxAttempts": "Attempts per participant (0 = unlimited)",
+      "maxQuestions": "Questions in this attempt (0 = all)",
+      "questionTime": "Per-question time limit (seconds, 0 = unlimited)",
+      "attemptTime": "Overall time limit (minutes, 0 = unlimited)",
+      "sessionTitle": "Session title (e.g. group name)",
+      "customFieldLabel": "Custom field label (optional)",
+      "customFieldPlaceholder": "Example: Group 101, Cohort B",
+      "customFields": "Custom fields",
+      "customFieldRequired": "Required field",
+      "allowGuests": "Allow guest access",
+      "shuffleQuestions": "Shuffle question order",
+      "shuffleAnswers": "Shuffle answer options",
+      "requireAll": "Require all questions answered",
+      "lockOnConfirm": "Lock answer after submission",
         "disableCopy": "Disable copy / paste",
         "disableBack": "Disable browser back button",
         "showElapsed": "Show elapsed time",
@@ -167,11 +172,12 @@
         "after_submit": "After submission",
         "always": "During attempt"
       },
-      "actions": {
-        "cancel": "Cancel",
-        "start": "Start & share",
-        "processing": "Starting…"
-      },
+    "actions": {
+      "cancel": "Cancel",
+      "start": "Start & share",
+      "processing": "Starting…"
+      ,"addField": "Add field"
+    },
       "errors": {
         "update": "We couldn't update the test settings. Try again.",
         "create": "We couldn't create a share link. Try again."
@@ -220,7 +226,10 @@
       "detailsCodeAnswer": "Code answer ({lang})",
       "gradeLabel": "Grade (max {weight})",
       "gradeAction": "Save score",
-      "currentScore": "Current: {value}/{weight}"
+      "currentScore": "Current: {value}/{weight}",
+      "exportCsv": "Export CSV",
+      "exportXlsx": "Export Excel",
+      "exportError": "Export failed. Please try again."
     },
     "modal": {
       "tag": "New test",

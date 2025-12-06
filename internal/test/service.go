@@ -121,11 +121,14 @@ func (t testService) GetTest(ownerID uint, testID string) (*dto.GetTestResponse,
 
 	for _, q := range test.Questions {
 		questionResponse := dto.QuestionResponse{
-			ID:            q.ID,
-			QuestionText:  q.QuestionText,
-			CorrectOption: q.CorrectOption,
-			ImageURL:      q.ImageURL,
-			Options:       make([]dto.OptionResponse, 0),
+			ID:             q.ID,
+			QuestionText:   q.QuestionText,
+			CorrectOption:  q.CorrectOption,
+			CorrectOptions: decodeCorrectOptions(q.CorrectJSON),
+			Type:           normalizeQuestionType(q.Type),
+			Weight:         normalizeWeight(q.Weight),
+			ImageURL:       q.ImageURL,
+			Options:        make([]dto.OptionResponse, 0),
 		}
 
 		for _, opt := range q.Options {

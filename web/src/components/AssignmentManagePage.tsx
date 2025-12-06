@@ -26,6 +26,7 @@ export default function AssignmentManagePage({ assignmentId }: AssignmentManageP
   const [attemptsLoading, setAttemptsLoading] = useState(false);
   const [attemptsError, setAttemptsError] = useState(false);
   const [isLoadingAssignment, setIsLoadingAssignment] = useState(true);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [detailsState, setDetailsState] = useState<{
     open: boolean;
     loading: boolean;
@@ -260,6 +261,29 @@ export default function AssignmentManagePage({ assignmentId }: AssignmentManageP
     setDetailsState({ open: false, loading: false, data: null, error: false });
   }, []);
 
+  const handleExport = useCallback(
+    async (format: 'csv' | 'xlsx') => {
+      try {
+        setExportError(null);
+        const blob = await TestAttemptService.exportAttempts(assignmentId, format);
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const suffix = format === 'csv' ? 'csv' : 'xlsx';
+        const name = assignment?.title || 'assignment';
+        link.href = url;
+        link.download = `${name}-${assignmentId}.${suffix}`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Failed to export attempts', error);
+        setExportError(t('dashboard.assignments.exportError'));
+      }
+    },
+    [assignment?.title, assignmentId, t]
+  );
+
   const handleCopyShareLink = useCallback(() => {
     if (!shareLink) {
       return;
@@ -357,6 +381,26 @@ export default function AssignmentManagePage({ assignmentId }: AssignmentManageP
                 >
                   {copyState === 'copied' ? t('common.actions.copied') : t('common.actions.copyLink')}
                 </button>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleExport('csv')}
+                  className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-indigo-300 hover:bg-indigo-500/10"
+                >
+                  {t('dashboard.assignments.exportCsv')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExport('xlsx')}
+                  className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-indigo-300 hover:bg-indigo-500/10"
+                >
+                  {t('dashboard.assignments.exportXlsx')}
+                </button>
+                {exportError && (
+                  <span className="text-sm text-red-200">{exportError}</span>
+                )}
               </div>
             </div>
 
@@ -465,15 +509,6 @@ export default function AssignmentManagePage({ assignmentId }: AssignmentManageP
               className="rounded-2xl border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-slate-200 transition hover:border-indigo-300 hover:bg-indigo-500/10"
             >
               {t('common.actions.backToDashboard')}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                router.push(assignment.share_url);
-              }}
-              className="rounded-2xl border border-indigo-300/40 bg-indigo-500/20 px-6 py-3 text-sm font-semibold text-indigo-100 transition hover:border-indigo-300 hover:bg-indigo-500/40"
-            >
-              {t('common.actions.openStudentView')}
             </button>
           </div>
         </div>

@@ -19,6 +19,13 @@ type TemplateSnapshot struct {
 	AvailableUntil *time.Time                 `json:"available_until,omitempty"`
 	AttemptPolicy  testAttempt.AttemptPolicy  `json:"attempt_policy"`
 	Questions      []TemplateQuestionSnapshot `json:"questions"`
+	Fields         []TemplateField            `json:"fields,omitempty"`
+}
+
+type TemplateField struct {
+	Key      string `json:"key"`
+	Label    string `json:"label"`
+	Required bool   `json:"required"`
 }
 
 type TemplateQuestionSnapshot struct {

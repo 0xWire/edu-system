@@ -21,6 +21,7 @@ func RegisterRoutes(v1 gin.IRouter, h *Handlers, optionalAuth gin.HandlerFunc, a
 	}
 	{
 		secured.GET("", h.ListByAssignment)
+		secured.GET("/export", h.Export)
 		secured.GET("/:id/details", h.Details)
 		secured.POST("/:id/grade", h.Grade)
 	}
