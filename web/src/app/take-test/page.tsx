@@ -17,7 +17,7 @@ export default function TakeTestPage() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [guestName, setGuestName] = useState('');
-  const [extraFieldValue, setExtraFieldValue] = useState('');
+  const [extraFields, setExtraFields] = useState<Record<string, string>>({});
   const [hasStarted, setHasStarted] = useState(false);
   const [assignment, setAssignment] = useState<AssignmentView | null>(null);
 
@@ -148,14 +148,18 @@ export default function TakeTestPage() {
     [firstName, lastName]
   );
 
-  const requiresExtra = Boolean(assignment?.fields?.some((f) => f.required && !['first_name', 'last_name'].includes(f.key)));
+  const requiresExtra = Boolean(
+    assignment?.fields?.some((f) => f.required && !['first_name', 'last_name'].includes(f.key))
+  );
+
   const canStart =
     fullName.length > 0 &&
     (!assignment?.fields ||
       assignment.fields.every((field) => {
         if (field.key === 'first_name') return firstName.trim().length > 0 || !field.required;
         if (field.key === 'last_name') return lastName.trim().length > 0 || !field.required;
-        return field.required ? extraFieldValue.trim().length > 0 : true;
+        const val = extraFields[field.key]?.trim() ?? '';
+        return field.required ? val.length > 0 : true;
       }));
 
   const handleStart = useCallback(() => {
@@ -169,7 +173,7 @@ export default function TakeTestPage() {
         if (field.key === 'first_name' || field.key === 'last_name') {
           return;
         }
-        const val = extraFieldValue.trim();
+        const val = (extraFields[field.key] ?? '').trim();
         if (val) {
           parts.push(`${field.label}: ${val}`);
         }
@@ -180,7 +184,7 @@ export default function TakeTestPage() {
     }
     setGuestName(guest);
     setHasStarted(true);
-  }, [canStart, fullName, assignment, extraFieldValue]);
+  }, [canStart, fullName, assignment, extraFields]);
 
   if (!assignmentId) {
     return (
@@ -273,8 +277,13 @@ export default function TakeTestPage() {
                       <input
                         id={`extra-${field.key}`}
                         type="text"
-                        value={extraFieldValue}
-                        onChange={(e) => setExtraFieldValue(e.target.value)}
+                        value={extraFields[field.key] ?? ''}
+                        onChange={(e) =>
+                          setExtraFields((prev) => ({
+                            ...prev,
+                            [field.key]: e.target.value
+                          }))
+                        }
                         className="mt-2 w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/60"
                       />
                     </div>

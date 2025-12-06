@@ -85,6 +85,7 @@ func (h *Handlers) NextQuestion(c *gin.Context) {
 		Attempt: toDTOAttemptView(av),
 		Question: dto.QuestionView{
 			ID:           qv.ID,
+			Type:         qv.Type,
 			QuestionText: qv.QuestionText,
 			ImageURL:     qv.ImageURL,
 			Options:      make([]dto.OptionView, len(qv.Options)),
