@@ -17,6 +17,7 @@ export default function TakeTestPage() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [guestName, setGuestName] = useState('');
+  const [participantFields, setParticipantFields] = useState<Record<string, string>>({});
   const [extraFields, setExtraFields] = useState<Record<string, string>>({});
   const [hasStarted, setHasStarted] = useState(false);
   const [assignment, setAssignment] = useState<AssignmentView | null>(null);
@@ -166,25 +167,33 @@ export default function TakeTestPage() {
     if (!canStart) {
       return;
     }
-    let guest = fullName;
-    if (assignment?.fields) {
-      const parts: string[] = [];
-      assignment.fields.forEach((field) => {
-        if (field.key === 'first_name' || field.key === 'last_name') {
-          return;
-        }
-        const val = (extraFields[field.key] ?? '').trim();
-        if (val) {
-          parts.push(`${field.label}: ${val}`);
-        }
-      });
-      if (parts.length) {
-        guest += ` (${parts.join(', ')})`;
+    const normalizedFields: Record<string, string> = {};
+    const fieldSpecs =
+      assignment?.fields && assignment.fields.length > 0
+        ? assignment.fields
+        : [
+            { key: 'first_name', label: 'First name', required: true },
+            { key: 'last_name', label: 'Last name', required: true }
+          ];
+
+    fieldSpecs.forEach((field) => {
+      let value = '';
+      if (field.key === 'first_name') {
+        value = firstName.trim();
+      } else if (field.key === 'last_name') {
+        value = lastName.trim();
+      } else {
+        value = (extraFields[field.key] ?? '').trim();
       }
-    }
-    setGuestName(guest);
+      if (value) {
+        normalizedFields[field.key] = value;
+      }
+    });
+
+    setParticipantFields(normalizedFields);
+    setGuestName(fullName.trim());
     setHasStarted(true);
-  }, [canStart, fullName, assignment, extraFields]);
+  }, [canStart, fullName, assignment, extraFields, firstName, lastName]);
 
   if (!assignmentId) {
     return (
@@ -311,5 +320,11 @@ export default function TakeTestPage() {
     );
   }
 
-  return <TestAttemptPage assignmentId={assignmentId} guestName={guestName || undefined} />;
+  return (
+    <TestAttemptPage
+      assignmentId={assignmentId}
+      guestName={guestName || undefined}
+      participantFields={participantFields}
+    />
+  );
 }

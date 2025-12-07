@@ -115,6 +115,7 @@ type Attempt struct {
 	test        TestID
 	user        UserID
 	guestName   *string
+	fields      map[string]string
 	startedAt   time.Time
 	submittedAt *time.Time
 	expiredAt   *time.Time
@@ -140,13 +141,18 @@ func (a *Attempt) Policy() AttemptPolicy {
 	return a.policy
 }
 
-func NewAttempt(id AttemptID, assignment AssignmentID, test TestID, user UserID, guestName *string, now time.Time, policy AttemptPolicy, seed int64, clientIP, clientFingerprint string) *Attempt {
+func NewAttempt(id AttemptID, assignment AssignmentID, test TestID, user UserID, guestName *string, fields map[string]string, now time.Time, policy AttemptPolicy, seed int64, clientIP, clientFingerprint string) *Attempt {
+	fieldCopy := make(map[string]string, len(fields))
+	for k, v := range fields {
+		fieldCopy[k] = v
+	}
 	return &Attempt{
 		id:                id,
 		assignment:        assignment,
 		test:              test,
 		user:              user,
 		guestName:         guestName,
+		fields:            fieldCopy,
 		startedAt:         now.UTC(),
 		status:            StatusActive,
 		policy:            policy,
@@ -207,6 +213,14 @@ func (a *Attempt) Answers() map[QuestionID]Answer {
 	return out
 }
 
+func (a *Attempt) ParticipantFields() map[string]string {
+	out := make(map[string]string, len(a.fields))
+	for k, v := range a.fields {
+		out[k] = v
+	}
+	return out
+}
+
 type AttemptSummary struct {
 	AttemptID    AttemptID
 	AssignmentID AssignmentID
@@ -222,6 +236,7 @@ type AttemptSummary struct {
 	MaxScore     float64
 	PendingScore float64
 	User         *UserInfo
+	Fields       map[string]string
 }
 
 type UserInfo struct {

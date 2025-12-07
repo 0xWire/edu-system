@@ -56,6 +56,7 @@ export interface StartAttemptRequest {
   assignment_id: string;
   guest_name?: string;
   fingerprint?: string;
+  fields?: Record<string, string>;
 }
 
 export interface AnswerPayload {
@@ -95,6 +96,7 @@ export interface AttemptSummary {
   max_score: number;
   pending_score?: number;
   participant: AttemptParticipant;
+  fields?: Record<string, string>;
 }
 
 export interface AttemptParticipant {
@@ -121,6 +123,7 @@ export interface AttemptDetailsMeta {
   max_score: number;
   pending_score?: number;
   participant: AttemptParticipant;
+  fields?: Record<string, string>;
 }
 
 export interface AttemptAnswer {

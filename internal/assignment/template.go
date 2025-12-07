@@ -125,6 +125,14 @@ func (tpl *TemplateSnapshot) ToAssignmentTemplate() *testAttempt.AssignmentTempl
 		AvailableUntil: tpl.AvailableUntil,
 		Policy:         tpl.AttemptPolicy,
 		Questions:      make([]testAttempt.TemplateQuestion, 0, len(tpl.Questions)),
+		Fields:         make([]testAttempt.AssignmentFieldSpec, 0, len(tpl.Fields)),
+	}
+	for _, f := range tpl.Fields {
+		out.Fields = append(out.Fields, testAttempt.AssignmentFieldSpec{
+			Key:      f.Key,
+			Label:    f.Label,
+			Required: f.Required,
+		})
 	}
 	for _, q := range tpl.Questions {
 		tq := testAttempt.TemplateQuestion{

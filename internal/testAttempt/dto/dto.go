@@ -3,9 +3,10 @@ package dto
 import "time"
 
 type StartAttemptRequest struct {
-	AssignmentID string  `json:"assignment_id" validate:"required,uuid4"`
-	GuestName    *string `json:"guest_name,omitempty" validate:"omitempty,min=1,max=64"`
-	Fingerprint  *string `json:"fingerprint,omitempty" validate:"omitempty,min=6,max=128"`
+	AssignmentID string            `json:"assignment_id" validate:"required,uuid4"`
+	GuestName    *string           `json:"guest_name,omitempty" validate:"omitempty,min=1,max=64"`
+	Fingerprint  *string           `json:"fingerprint,omitempty" validate:"omitempty,min=6,max=128"`
+	Fields       map[string]string `json:"fields,omitempty"`
 }
 
 type StartAttemptResponse struct {
@@ -82,18 +83,19 @@ type AttemptSummaryResponse struct {
 }
 
 type AttemptSummaryView struct {
-	AttemptID    string          `json:"attempt_id"`
-	AssignmentID string          `json:"assignment_id"`
-	TestID       string          `json:"test_id"`
-	Status       string          `json:"status"`
-	StartedAt    time.Time       `json:"started_at"`
-	SubmittedAt  *time.Time      `json:"submitted_at,omitempty"`
-	ExpiredAt    *time.Time      `json:"expired_at,omitempty"`
-	DurationSec  int             `json:"duration_sec"`
-	Score        float64         `json:"score"`
-	MaxScore     float64         `json:"max_score"`
-	PendingScore float64         `json:"pending_score,omitempty"`
-	Participant  ParticipantView `json:"participant"`
+	AttemptID    string            `json:"attempt_id"`
+	AssignmentID string            `json:"assignment_id"`
+	TestID       string            `json:"test_id"`
+	Status       string            `json:"status"`
+	StartedAt    time.Time         `json:"started_at"`
+	SubmittedAt  *time.Time        `json:"submitted_at,omitempty"`
+	ExpiredAt    *time.Time        `json:"expired_at,omitempty"`
+	DurationSec  int               `json:"duration_sec"`
+	Score        float64           `json:"score"`
+	MaxScore     float64           `json:"max_score"`
+	PendingScore float64           `json:"pending_score,omitempty"`
+	Participant  ParticipantView   `json:"participant"`
+	Fields       map[string]string `json:"fields,omitempty"`
 }
 
 type ParticipantView struct {

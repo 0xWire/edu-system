@@ -51,7 +51,7 @@ func (h *Handlers) Start(c *gin.Context) {
 	} else if cookie, err := c.Cookie("attempt_fingerprint"); err == nil {
 		meta.Fingerprint = cookie
 	}
-	id, err := h.svc.StartAttempt(c, userIDPtr, req.GuestName, AssignmentID(req.AssignmentID), meta)
+	id, err := h.svc.StartAttempt(c, userIDPtr, req.GuestName, req.Fields, AssignmentID(req.AssignmentID), meta)
 	if err != nil {
 		writeDomainErr(c, err)
 		return
@@ -243,6 +243,7 @@ func (h *Handlers) ListByAssignment(c *gin.Context) {
 			MaxScore:     a.MaxScore,
 			PendingScore: a.PendingScore,
 			Participant:  participant,
+			Fields:       a.Fields,
 		})
 	}
 	c.JSON(http.StatusOK, resp)
@@ -260,6 +261,11 @@ func (h *Handlers) Export(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, errJSON("unauthorized", "authentication required"))
 		return
 	}
+	descriptor, err := h.svc.getOwnedAssignmentDescriptor(c, UserID(ownerID), AssignmentID(assignmentID))
+	if err != nil {
+		writeDomainErr(c, err)
+		return
+	}
 	attempts, err := h.svc.ListAssignmentAttempts(c, UserID(ownerID), AssignmentID(assignmentID))
 	if err != nil {
 		writeDomainErr(c, err)
@@ -274,11 +280,28 @@ func (h *Handlers) Export(c *gin.Context) {
 	filename := fmt.Sprintf("assignment_%s.%s", assignmentID, format)
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 
+	var fieldSpecs []AssignmentFieldSpec
+	var fieldHeaders []string
+	if descriptor.Template != nil {
+		fieldSpecs = descriptor.Template.Fields
+		fieldHeaders = make([]string, 0, len(fieldSpecs))
+		for _, f := range fieldSpecs {
+			header := strings.TrimSpace(f.Label)
+			if header == "" {
+				header = f.Key
+			}
+			fieldHeaders = append(fieldHeaders, header)
+		}
+	}
+
 	if format == "csv" {
 		c.Header("Content-Type", "text/csv")
 		buf := &bytes.Buffer{}
 		w := csv.NewWriter(buf)
-		_ = w.Write([]string{"Attempt ID", "Participant", "Type", "Status", "Score", "Max Score", "Pending", "Started At", "Submitted At", "Expired At", "Duration Sec"})
+		header := []string{"Attempt ID", "Participant", "Type"}
+		header = append(header, fieldHeaders...)
+		header = append(header, "Status", "Score", "Max Score", "Pending", "Started At", "Submitted At", "Expired At", "Duration Sec")
+		_ = w.Write(header)
 		for _, a := range attempts {
 			participant := buildParticipantName(a)
 			started := a.StartedAt.Format(time.RFC3339)
@@ -294,6 +317,11 @@ func (h *Handlers) Export(c *gin.Context) {
 				string(a.AttemptID),
 				participant.Name,
 				participant.Kind,
+			}
+			for _, spec := range fieldSpecs {
+				record = append(record, a.Fields[spec.Key])
+			}
+			record = append(record,
 				string(a.Status),
 				fmt.Sprintf("%.2f", a.Score),
 				fmt.Sprintf("%.2f", a.MaxScore),
@@ -302,7 +330,7 @@ func (h *Handlers) Export(c *gin.Context) {
 				submitted,
 				expired,
 				fmt.Sprintf("%d", int(a.Duration/time.Second)),
-			}
+			)
 			_ = w.Write(record)
 		}
 		w.Flush()
@@ -313,7 +341,9 @@ func (h *Handlers) Export(c *gin.Context) {
 	// XLSX
 	f := excelize.NewFile()
 	sheet := f.GetSheetName(f.GetActiveSheetIndex())
-	header := []string{"Attempt ID", "Participant", "Type", "Status", "Score", "Max Score", "Pending", "Started At", "Submitted At", "Expired At", "Duration Sec"}
+	header := []string{"Attempt ID", "Participant", "Type"}
+	header = append(header, fieldHeaders...)
+	header = append(header, "Status", "Score", "Max Score", "Pending", "Started At", "Submitted At", "Expired At", "Duration Sec")
 	for i, hname := range header {
 		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
 		_ = f.SetCellValue(sheet, cell, hname)
@@ -325,12 +355,17 @@ func (h *Handlers) Export(c *gin.Context) {
 			string(a.AttemptID),
 			participant.Name,
 			participant.Kind,
+		}
+		for _, spec := range fieldSpecs {
+			values = append(values, a.Fields[spec.Key])
+		}
+		values = append(values,
 			string(a.Status),
 			fmt.Sprintf("%.2f", a.Score),
 			fmt.Sprintf("%.2f", a.MaxScore),
 			fmt.Sprintf("%.2f", a.PendingScore),
 			a.StartedAt.Format(time.RFC3339),
-		}
+		)
 		if a.SubmittedAt != nil {
 			values = append(values, a.SubmittedAt.Format(time.RFC3339))
 		} else {
@@ -357,16 +392,23 @@ func (h *Handlers) Export(c *gin.Context) {
 
 func buildParticipantName(a AttemptSummary) dto.ParticipantView {
 	participant := dto.ParticipantView{}
+	if name := participantNameFromFields(a.Fields); name != "" {
+		participant.Name = name
+	}
 	if a.User != nil {
 		participant.Kind = "user"
 		uid := uint64(a.User.ID)
 		participant.UserID = &uid
-		participant.Name = a.User.FullName()
+		if participant.Name == "" {
+			participant.Name = a.User.FullName()
+		}
 	} else if a.UserID != 0 {
 		participant.Kind = "user"
 		uid := uint64(a.UserID)
 		participant.UserID = &uid
-		participant.Name = fmt.Sprintf("User #%d", uid)
+		if participant.Name == "" {
+			participant.Name = fmt.Sprintf("User #%d", uid)
+		}
 	} else {
 		participant.Kind = "guest"
 		if a.GuestName != nil && *a.GuestName != "" {
@@ -376,6 +418,25 @@ func buildParticipantName(a AttemptSummary) dto.ParticipantView {
 		}
 	}
 	return participant
+}
+
+func participantNameFromFields(fields map[string]string) string {
+	if len(fields) == 0 {
+		return ""
+	}
+	first := strings.TrimSpace(fields["first_name"])
+	last := strings.TrimSpace(fields["last_name"])
+	name := strings.TrimSpace(strings.Join([]string{first, last}, " "))
+	if name != "" {
+		return name
+	}
+	if first != "" {
+		return first
+	}
+	if last != "" {
+		return last
+	}
+	return ""
 }
 
 // GET /v1/attempts/:id/details

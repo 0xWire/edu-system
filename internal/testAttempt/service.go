@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 )
 
@@ -73,6 +74,7 @@ type AssignmentTemplate struct {
 	AvailableUntil *time.Time
 	Policy         AttemptPolicy
 	Questions      []TemplateQuestion
+	Fields         []AssignmentFieldSpec
 }
 
 type TemplateQuestion struct {
@@ -90,6 +92,12 @@ type TemplateOption struct {
 	ID         string
 	OptionText string
 	ImageURL   string
+}
+
+type AssignmentFieldSpec struct {
+	Key      string
+	Label    string
+	Required bool
 }
 
 func (tpl *AssignmentTemplate) VisibleQuestions() []VisibleQuestion {
@@ -160,6 +168,43 @@ func (tpl *AssignmentTemplate) QuestionsForScoring() []QuestionForScoring {
 	return out
 }
 
+func normalizeParticipantFields(fields map[string]string, tpl *AssignmentTemplate) map[string]string {
+	if len(fields) == 0 {
+		return map[string]string{}
+	}
+	allowed := make(map[string]struct{})
+	if tpl != nil {
+		for _, f := range tpl.Fields {
+			allowed[f.Key] = struct{}{}
+		}
+	}
+	out := make(map[string]string)
+	for k, v := range fields {
+		if len(allowed) > 0 {
+			if _, ok := allowed[k]; !ok {
+				continue
+			}
+		}
+		val := strings.TrimSpace(v)
+		if val == "" {
+			continue
+		}
+		out[k] = val
+	}
+	return out
+}
+
+func assignmentFieldSet(tpl *AssignmentTemplate) map[string]struct{} {
+	out := make(map[string]struct{})
+	if tpl == nil {
+		return out
+	}
+	for _, f := range tpl.Fields {
+		out[f.Key] = struct{}{}
+	}
+	return out
+}
+
 type UserDirectory interface {
 	Lookup(ctx context.Context, ids []UserID) (map[UserID]UserInfo, error)
 }
@@ -178,7 +223,18 @@ func NewTestAttemptService(repo Repository, tests TestReadModel, assignments Ass
 	return &Service{repo: repo, tests: tests, assignments: assignments, tx: tx, clock: clock, policy: policy, users: users}
 }
 
-func (s *Service) StartAttempt(ctx context.Context, userID *UserID, guestName *string, assignmentID AssignmentID, meta AttemptMetadata) (AttemptID, error) {
+func (s *Service) getOwnedAssignmentDescriptor(ctx context.Context, requester UserID, assignmentID AssignmentID) (AssignmentDescriptor, error) {
+	descriptor, err := s.assignments.GetAssignment(ctx, assignmentID)
+	if err != nil {
+		return AssignmentDescriptor{}, err
+	}
+	if descriptor.OwnerID != requester {
+		return AssignmentDescriptor{}, ErrForbidden
+	}
+	return descriptor, nil
+}
+
+func (s *Service) StartAttempt(ctx context.Context, userID *UserID, guestName *string, fields map[string]string, assignmentID AssignmentID, meta AttemptMetadata) (AttemptID, error) {
 	assignment, err := s.assignments.GetAssignment(ctx, assignmentID)
 	if err != nil {
 		return "", err
@@ -186,6 +242,23 @@ func (s *Service) StartAttempt(ctx context.Context, userID *UserID, guestName *s
 	testID := assignment.TestID
 
 	template := assignment.Template
+	participantFields := normalizeParticipantFields(fields, template)
+	if guestName != nil {
+		name := strings.TrimSpace(*guestName)
+		if name == "" {
+			guestName = nil
+		} else {
+			guestName = &name
+		}
+	}
+	if guestName == nil {
+		fn := strings.TrimSpace(participantFields["first_name"])
+		ln := strings.TrimSpace(participantFields["last_name"])
+		if fn != "" || ln != "" {
+			name := strings.TrimSpace(fn + " " + ln)
+			guestName = &name
+		}
+	}
 
 	var (
 		durationSec int
@@ -283,7 +356,7 @@ func (s *Service) StartAttempt(ctx context.Context, userID *UserID, guestName *s
 		order = order[:policy.MaxQuestions]
 	}
 
-	a := NewAttempt(NewAttemptID(), assignmentID, testID, uid, guestName, now, policy, seed, meta.ClientIP, meta.Fingerprint)
+	a := NewAttempt(NewAttemptID(), assignmentID, testID, uid, guestName, participantFields, now, policy, seed, meta.ClientIP, meta.Fingerprint)
 
 	a.InitializePlan(order)
 
@@ -368,17 +441,18 @@ func (s *Service) AnswerCurrent(ctx context.Context, requester *UserID, id Attem
 }
 
 func (s *Service) ListAssignmentAttempts(ctx context.Context, requester UserID, assignmentID AssignmentID) ([]AttemptSummary, error) {
-	descriptor, err := s.assignments.GetAssignment(ctx, assignmentID)
+	descriptor, err := s.getOwnedAssignmentDescriptor(ctx, requester, assignmentID)
 	if err != nil {
 		return nil, err
-	}
-	if descriptor.OwnerID != requester {
-		return nil, ErrForbidden
 	}
 	summaries, err := s.repo.ListSummariesByAssignments(ctx, []AssignmentID{assignmentID})
 	if err != nil {
 		return nil, err
 	}
+	for i := range summaries {
+		summaries[i].Fields = normalizeParticipantFields(summaries[i].Fields, descriptor.Template)
+	}
+	fieldSet := assignmentFieldSet(descriptor.Template)
 	if s.users == nil {
 		return summaries, nil
 	}
@@ -403,6 +477,16 @@ func (s *Service) ListAssignmentAttempts(ctx context.Context, requester UserID, 
 		if info, ok := profiles[summaries[i].UserID]; ok {
 			val := info
 			summaries[i].User = &val
+			if _, ok := fieldSet["first_name"]; ok {
+				if fn := strings.TrimSpace(val.FirstName); fn != "" && summaries[i].Fields["first_name"] == "" {
+					summaries[i].Fields["first_name"] = fn
+				}
+			}
+			if _, ok := fieldSet["last_name"]; ok {
+				if ln := strings.TrimSpace(val.LastName); ln != "" && summaries[i].Fields["last_name"] == "" {
+					summaries[i].Fields["last_name"] = ln
+				}
+			}
 		}
 	}
 	return summaries, nil
