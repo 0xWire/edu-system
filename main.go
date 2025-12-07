@@ -20,7 +20,7 @@ import (
 
 func main() {
 	cfg := platform.Load()
-	db := platform.InitDB(cfg.DBPath)
+	db := platform.InitDB(cfg)
 
 	// Initialize repositories
 	userRepo := authrepo.NewUserRepository(db)

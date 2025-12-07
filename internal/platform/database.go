@@ -3,6 +3,7 @@ package platform
 import (
 	"log"
 
+	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -13,10 +14,25 @@ import (
 	"edu-system/internal/test"
 )
 
-func InitDB(dbPath string) *gorm.DB {
-	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
-	})
+func InitDB(cfg *Config) *gorm.DB {
+	var (
+		db  *gorm.DB
+		err error
+	)
+
+	switch cfg.DBDriver {
+	case "postgres", "postgresql":
+		if cfg.DBDSN == "" {
+			log.Fatalf("DB_DSN is required when DB_DRIVER is %s", cfg.DBDriver)
+		}
+		db, err = gorm.Open(postgres.Open(cfg.DBDSN), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Info),
+		})
+	default:
+		db, err = gorm.Open(sqlite.Open(cfg.DBPath), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Info),
+		})
+	}
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}

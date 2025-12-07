@@ -9,6 +9,8 @@ import (
 
 type Config struct {
 	DBPath    string
+	DBDriver  string
+	DBDSN     string
 	JWTSecret string
 	GinMode   string
 	Port      string
@@ -21,6 +23,8 @@ func Load() *Config {
 
 	return &Config{
 		DBPath:    getEnv("DB_PATH", "./database.db"),
+		DBDriver:  getEnv("DB_DRIVER", "sqlite"),
+		DBDSN:     getEnv("DB_DSN", ""),
 		JWTSecret: getEnv("JWT_SECRET", "your-secret-key"),
 		GinMode:   getEnv("GIN_MODE", "debug"),
 		Port:      getEnv("PORT", "8080"),
