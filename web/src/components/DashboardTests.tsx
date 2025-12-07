@@ -6,7 +6,9 @@ import { useI18n } from '@/contexts/LanguageContext';
 import { TestService } from '@/services/test';
 import { AssignmentService } from '@/services/assignment';
 import type { GetTestResponse } from '@/types/test';
+import type { AssignmentFieldSpec } from '@/types/assignment';
 import TestLaunchSettingsModal, { LaunchSettingsFormValues } from './TestLaunchSettingsModal';
+import TestCsvImportPanel from './TestCsvImportPanel';
 
 export default function DashboardTests() {
   const router = useRouter();
@@ -83,21 +85,8 @@ export default function DashboardTests() {
     router.push(`/dashboard/tests/${testId}`);
   }, [router]);
 
-  const handleGenerateShareLink = useCallback(
-    async (testId: string) => {
-      try {
-        const assignment = await AssignmentService.createAssignment({ test_id: testId });
-        const target = assignment.manage_url ?? assignment.share_url;
-        router.push(target);
-      } catch (error) {
-        console.error('Failed to generate assignment link', error);
-      }
-    },
-    [router]
-  );
-
   const handleLaunchSubmit = useCallback(
-    async (values: LaunchSettingsFormValues) => {
+    async (values: LaunchSettingsFormValues, meta: { sessionTitle?: string; fields: AssignmentFieldSpec[]; comment?: string }) => {
       if (!configuringTest) {
         return;
       }
@@ -140,15 +129,17 @@ export default function DashboardTests() {
       try {
         const assignment = await AssignmentService.createAssignment({
           test_id: configuringTest.test_id,
-          title: configuringTest.title
+          title: meta.sessionTitle?.trim() || configuringTest.title,
+          comment: meta.comment,
+          fields: meta.fields
         });
         setTests((prev) =>
           prev.map((item) =>
             item.test_id === configuringTest.test_id
               ? {
-                  ...item,
-                  duration_sec: durationSec,
-                  allow_guests: values.allowGuests,
+                ...item,
+                duration_sec: durationSec,
+                allow_guests: values.allowGuests,
                   attempt_policy: {
                     shuffle_questions: values.shuffleQuestions,
                     shuffle_answers: values.shuffleAnswers,
@@ -238,14 +229,22 @@ export default function DashboardTests() {
                 <p className="mt-2 text-3xl font-semibold text-white">{item.value}</p>
                 <p className="mt-1 text-xs text-slate-300">{item.helper}</p>
               </div>
-            ))}
-          </section>
+          ))}
+        </section>
 
-          <section className="mb-10 rounded-3xl border border-white/10 bg-slate-950/70 shadow-2xl shadow-black/30">
-            <div className="flex flex-col gap-4 px-6 py-6 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-base font-semibold text-white">
-                  {hasConnectionError ? t('dashboard.connection.errorTitle') : t('dashboard.connection.successTitle')}
+        <div className="mb-10">
+          <TestCsvImportPanel
+            onImported={() => {
+              void fetchTests();
+            }}
+          />
+        </div>
+
+        <section className="mb-10 rounded-3xl border border-white/10 bg-slate-950/70 shadow-2xl shadow-black/30">
+          <div className="flex flex-col gap-4 px-6 py-6 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-base font-semibold text-white">
+                {hasConnectionError ? t('dashboard.connection.errorTitle') : t('dashboard.connection.successTitle')}
                 </p>
                 <p className="text-sm text-slate-200">
                   {hasConnectionError
@@ -335,15 +334,6 @@ export default function DashboardTests() {
                         >
                           {t('dashboard.launch.actions.start')}
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            void handleGenerateShareLink(test.test_id);
-                          }}
-                          className="rounded-xl border border-indigo-500 px-4 py-2 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-500 hover:text-white"
-                        >
-                          {t('common.actions.share')}
-                        </button>
                       </div>
                     </article>
                   );
@@ -357,8 +347,8 @@ export default function DashboardTests() {
       <TestLaunchSettingsModal
         open={Boolean(configuringTest)}
         test={configuringTest}
-        loading={configuringLoading}
-        error={configuringError}
+        submitting={configuringLoading}
+        errorMessage={configuringError}
         onClose={handleCloseLaunchModal}
         onSubmit={handleLaunchSubmit}
       />

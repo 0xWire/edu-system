@@ -3,6 +3,7 @@ package assignment
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -31,7 +32,16 @@ func (h *Handlers) Create(c *gin.Context) {
 		return
 	}
 
-	assignment, err := h.svc.Create(c, uint(ownerID), req.TestID, req.Title)
+	fields := make([]TemplateField, 0, len(req.Fields))
+	for _, f := range req.Fields {
+		fields = append(fields, TemplateField{
+			Key:      strings.TrimSpace(f.Key),
+			Label:    strings.TrimSpace(f.Label),
+			Required: f.Required,
+		})
+	}
+
+	assignment, err := h.svc.CreateWithTemplate(c, uint(ownerID), req.TestID, req.Title, strings.TrimSpace(req.Comment), fields)
 	if err != nil {
 		status := http.StatusInternalServerError
 		msg := err.Error()
@@ -107,8 +117,18 @@ func toView(a Assignment, settings *TestSettingsSummary, isOwner bool) dto.Assig
 		AssignmentID: a.ID,
 		TestID:       a.TestID,
 		Title:        a.Title,
+		Comment:      a.Comment,
 		ShareURL:     "/take-test?assignmentId=" + a.ID,
 		IsOwner:      isOwner,
+	}
+	if tpl, _ := DecodeTemplateSnapshot(a.Template); tpl != nil {
+		for _, f := range tpl.Fields {
+			view.Fields = append(view.Fields, dto.AssignmentFieldSpec{
+				Key:      f.Key,
+				Label:    f.Label,
+				Required: f.Required,
+			})
+		}
 	}
 	if isOwner {
 		view.ManageURL = "/dashboard/assignments/" + a.ID

@@ -23,7 +23,7 @@
       "finish": "Finish attempt",
       "cancel": "Cancel",
       "startOver": "Start over",
-      "openStudentView": "Open student view"
+      "remove": "Remove"
     },
     "helpers": {
       "exampleName": "e.g. Jane Doe"
@@ -97,6 +97,16 @@
       "successDescription": "Loaded {count} tests successfully",
       "serviceOnline": "Service online"
     },
+    "importer": {
+      "title": "Import from CSV",
+      "subtitle": "Download the template, fill in your questions and upload it to create a test instantly.",
+      "download": "Download CSV template",
+      "selectFile": "Upload filled template",
+      "uploading": "Importing…",
+      "helper": "Use | or ; to separate answer options and correct positions. Allowed types: single, multi, text, code. LaTeX is supported when wrapped in $...$ (e.g. $\\int x^2 dx$).",
+      "success": "Imported {count} questions into \"{title}\"",
+      "error": "Import failed. Please check the CSV format and try again."
+    },
     "library": {
       "title": "Test library",
       "subtitle": "Select a test to review or share with learners.",
@@ -140,6 +150,13 @@
         "maxQuestions": "Questions in this attempt (0 = all)",
         "questionTime": "Per-question time limit (seconds, 0 = unlimited)",
         "attemptTime": "Overall time limit (minutes, 0 = unlimited)",
+        "sessionTitle": "Session title (e.g. group name)",
+        "comment": "Comment (shown to students & in export)",
+        "commentPlaceholder": "Any notes or instructions for this test",
+        "customFieldLabel": "Custom field label (optional)",
+        "customFieldPlaceholder": "Example: Group 101, Cohort B",
+        "customFields": "Custom fields",
+        "customFieldRequired": "Required field",
         "allowGuests": "Allow guest access",
         "shuffleQuestions": "Shuffle question order",
         "shuffleAnswers": "Shuffle answer options",
@@ -157,11 +174,12 @@
         "after_submit": "After submission",
         "always": "During attempt"
       },
-      "actions": {
-        "cancel": "Cancel",
-        "start": "Start & share",
-        "processing": "Starting…"
-      },
+    "actions": {
+      "cancel": "Cancel",
+      "start": "Start & share",
+      "processing": "Starting…"
+      ,"addField": "Add field"
+    },
       "errors": {
         "update": "We couldn't update the test settings. Try again.",
         "create": "We couldn't create a share link. Try again."
@@ -210,7 +228,10 @@
       "detailsCodeAnswer": "Code answer ({lang})",
       "gradeLabel": "Grade (max {weight})",
       "gradeAction": "Save score",
-      "currentScore": "Current: {value}/{weight}"
+      "currentScore": "Current: {value}/{weight}",
+      "exportCsv": "Export CSV",
+      "exportXlsx": "Export Excel",
+      "exportError": "Export failed. Please try again."
     },
     "modal": {
       "tag": "New test",
@@ -234,6 +255,7 @@
     "detailsTag": "test details",
     "timeLimitLabel": "Time allowed",
     "timeLimitNone": "No time limit for this test",
+    "commentLabel": "Comment",
     "firstNameLabel": "First name",
     "lastNameLabel": "Last name",
     "nameHelp": "Your instructor will see this name on the results page.",

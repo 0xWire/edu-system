@@ -1,5 +1,16 @@
+import axios from 'axios';
 import api from '@/lib/api';
 import { LoginRequest, RegisterRequest, User, AuthResponse } from '@/types/auth';
+
+function extractErrorMessage(error: unknown, fallback: string): string {
+  if (axios.isAxiosError(error)) {
+    const message = error.response?.data?.message;
+    if (typeof message === 'string' && message.trim()) {
+      return message;
+    }
+  }
+  return fallback;
+}
 
 export class AuthService {
   static async login(credentials: LoginRequest): Promise<AuthResponse> {
@@ -19,10 +30,10 @@ export class AuthService {
         success: false,
         error: 'Invalid response from server'
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
-        error: error.response?.data?.message || 'Login failed'
+        error: extractErrorMessage(error, 'Login failed')
       };
     }
   }
@@ -31,10 +42,10 @@ export class AuthService {
     try {
       await api.post('/api/v1/auth/register', userData);
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
-        error: error.response?.data?.message || 'Registration failed'
+        error: extractErrorMessage(error, 'Registration failed')
       };
     }
   }
@@ -46,10 +57,10 @@ export class AuthService {
         success: true,
         user: response.data
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
-        error: error.response?.data?.message || 'Failed to get profile'
+        error: extractErrorMessage(error, 'Failed to get profile')
       };
     }
   }

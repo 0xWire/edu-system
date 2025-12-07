@@ -1,0 +1,30 @@
+FROM golang:1.24-bullseye AS builder
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN CGO_ENABLED=1 GOOS=linux go build -o /bin/edu-system main.go
+
+FROM debian:12-slim
+
+RUN useradd -m appuser
+WORKDIR /app
+
+ENV PORT=8080
+ENV DB_PATH=/data/database.db
+ENV JWT_SECRET=dev-secret
+ENV GIN_MODE=release
+
+COPY --from=builder /bin/edu-system /usr/local/bin/edu-system
+
+RUN mkdir -p /data && chown -R appuser:appuser /data
+
+USER appuser
+
+EXPOSE 8081
+
+CMD ["edu-system"]

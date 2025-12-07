@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AxiosError } from 'axios';
 import { useRouter } from 'next/navigation';
-import { AttemptView, QuestionView, AnswerPayload } from '@/types/testAttempt';
+import { AttemptView, QuestionView, AnswerPayload, StartAttemptRequest } from '@/types/testAttempt';
 import { TestAttemptService } from '@/services/testAttempt';
 import QuestionDisplay from './QuestionDisplay';
 import TestTimer from './TestTimer';
@@ -12,9 +12,10 @@ import { useI18n } from '@/contexts/LanguageContext';
 interface TestAttemptPageProps {
   assignmentId: string;
   guestName?: string;
+  participantFields?: Record<string, string>;
 }
 
-export default function TestAttemptPage({ assignmentId, guestName }: TestAttemptPageProps) {
+export default function TestAttemptPage({ assignmentId, guestName, participantFields }: TestAttemptPageProps) {
   const router = useRouter();
   const { t } = useI18n();
 
@@ -199,7 +200,7 @@ export default function TestAttemptPage({ assignmentId, guestName }: TestAttempt
     if (!attempt || attempt.status !== 'active') {
       resetQuestionTimer();
     }
-  }, [attempt?.status, resetQuestionTimer]);
+  }, [attempt, resetQuestionTimer]);
 
   const handleSubmitTest = useCallback(async (currentAttempt?: AttemptView) => {
     const attemptToSubmit = currentAttempt ?? attempt;
@@ -359,9 +360,10 @@ export default function TestAttemptPage({ assignmentId, guestName }: TestAttempt
     const startTestAttempt = async () => {
       try {
         setLoading(true);
-        const startData: { assignment_id: string; guest_name?: string; fingerprint: string } = {
+        const startData: StartAttemptRequest = {
           assignment_id: assignmentId,
-          fingerprint
+          fingerprint,
+          fields: participantFields
         };
         if (guestName) {
           startData.guest_name = guestName;
@@ -419,6 +421,7 @@ export default function TestAttemptPage({ assignmentId, guestName }: TestAttempt
     assignmentId,
     fingerprint,
     guestName,
+    participantFields,
     resetQuestionTimer,
     startQuestionTimer
   ]);
@@ -500,22 +503,6 @@ export default function TestAttemptPage({ assignmentId, guestName }: TestAttempt
               </p>
             )}
 
-            <div className="mt-8 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => router.push('/dashboard')}
-                className="rounded-2xl bg-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:bg-indigo-600"
-              >
-                {t('common.actions.backToDashboard')}
-              </button>
-              <button
-                type="button"
-                onClick={() => router.refresh()}
-                className="rounded-2xl border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-slate-200 transition hover:border-indigo-300 hover:bg-indigo-500/10"
-              >
-                {t('common.actions.startOver')}
-              </button>
-            </div>
           </div>
         </div>
       </section>

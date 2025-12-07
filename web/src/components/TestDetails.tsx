@@ -1,10 +1,12 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { TestService } from '@/services/test';
 import type { GetTestResponse } from '@/types/test';
 import { useI18n } from '@/contexts/LanguageContext';
+import MathText from './MathText';
 
 interface TestDetailsProps {
   testId: string;
@@ -83,7 +85,9 @@ export default function TestDetails({ testId }: TestDetailsProps) {
       <header className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl backdrop-blur">
         <p className="text-xs uppercase tracking-[0.3em] text-indigo-200">{t('dashboard.testsDetail.tag')}</p>
         <h1 className="mt-2 text-3xl font-semibold text-white">{test.title}</h1>
-        <p className="mt-3 max-w-3xl text-sm text-slate-200">{test.description}</p>
+        <p className="mt-3 max-w-3xl text-sm text-slate-200">
+          <MathText text={test.description} />
+        </p>
 
         <div className="mt-4 flex flex-wrap gap-3 text-xs uppercase tracking-[0.2em] text-indigo-200">
           <span className="rounded-full border border-white/10 bg-white/10 px-3 py-2">
@@ -130,7 +134,9 @@ export default function TestDetails({ testId }: TestDetailsProps) {
                 <p className="text-xs uppercase tracking-[0.3em] text-indigo-200">
                   {t('dashboard.testsDetail.questionLabel', { index: index + 1 })}
                 </p>
-                <h2 className="mt-1 text-lg font-semibold text-white">{question.question_text}</h2>
+                <h2 className="mt-1 text-lg font-semibold text-white">
+                  <MathText text={question.question_text} />
+                </h2>
               </div>
               {question.image_url && (
                 <img
@@ -154,7 +160,7 @@ export default function TestDetails({ testId }: TestDetailsProps) {
                     }`}
                   >
                     <div>
-                      <p className="font-medium">{option.option_text}</p>
+                      <MathText text={option.option_text} className="font-medium" />
                       {option.image_url && (
                         <img
                           src={option.image_url}

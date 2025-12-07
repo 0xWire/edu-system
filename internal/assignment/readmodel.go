@@ -40,6 +40,7 @@ func (a assignmentReadModel) GetAssignment(ctx context.Context, id testAttempt.A
 		TestID:   testAttempt.TestID(asg.TestID),
 		OwnerID:  testAttempt.UserID(asg.OwnerID),
 		Title:    asg.Title,
+		Comment:  asg.Comment,
 		Template: template,
 	}, nil
 }

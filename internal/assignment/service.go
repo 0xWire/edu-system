@@ -32,6 +32,10 @@ type TestSettingsSummary struct {
 }
 
 func (s *Service) Create(ctx context.Context, ownerID uint, testID string, title string) (*Assignment, error) {
+	return s.CreateWithTemplate(ctx, ownerID, testID, title, "", nil)
+}
+
+func (s *Service) CreateWithTemplate(ctx context.Context, ownerID uint, testID string, title string, comment string, fields []TemplateField) (*Assignment, error) {
 	t, err := s.tests.GetByID(testID)
 	if err != nil {
 		return nil, err
@@ -49,6 +53,10 @@ func (s *Service) Create(ctx context.Context, ownerID uint, testID string, title
 	if err != nil {
 		return nil, err
 	}
+	if len(fields) == 0 {
+		fields = defaultFields()
+	}
+	snapshot.Fields = fields
 	rawSnapshot, err := snapshot.Marshal()
 	if err != nil {
 		return nil, err
@@ -59,6 +67,7 @@ func (s *Service) Create(ctx context.Context, ownerID uint, testID string, title
 		TestID:    testID,
 		OwnerID:   ownerID,
 		Title:     name,
+		Comment:   strings.TrimSpace(comment),
 		CreatedAt: s.clock(),
 		Template:  rawSnapshot,
 	}
@@ -97,4 +106,11 @@ func (s *Service) GetTestSettings(ctx context.Context, testID string) (*TestSett
 
 func (s *Service) ListByOwner(ctx context.Context, ownerID uint) ([]Assignment, error) {
 	return s.repo.ListByOwner(ctx, ownerID)
+}
+
+func defaultFields() []TemplateField {
+	return []TemplateField{
+		{Key: "first_name", Label: "First name", Required: true},
+		{Key: "last_name", Label: "Last name", Required: true},
+	}
 }

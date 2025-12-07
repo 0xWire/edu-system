@@ -37,7 +37,8 @@ func (h *TestHandler) CreateTest(c *gin.Context) {
 		return
 	}
 
-	if err := h.testService.CreateTest(uint(uid), &req); err != nil {
+	testID, err := h.testService.CreateTest(uint(uid), &req)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, response.ErrorResponse{
 			Error:   "test creation failed",
 			Message: err.Error(),
@@ -47,6 +48,7 @@ func (h *TestHandler) CreateTest(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, response.SuccessResponse{
 		Message: "test created successfully",
+		Data:    gin.H{"test_id": testID},
 	})
 }
 
@@ -184,6 +186,54 @@ func (h *TestHandler) DeleteTest(c *gin.Context) {
 	})
 }
 
+func (h *TestHandler) DownloadCSVTemplate(c *gin.Context) {
+	c.Header("Content-Type", "text/csv")
+	c.Header("Content-Disposition", "attachment; filename=test-template.csv")
+	c.String(http.StatusOK, csvTemplateContent())
+}
+
+func (h *TestHandler) ImportFromCSV(c *gin.Context) {
+	uid, ok := userIDFromCtx(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, response.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, response.ErrorResponse{
+			Error:   "file is required",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	src, err := file.Open()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, response.ErrorResponse{
+			Error:   "failed to read file",
+			Message: err.Error(),
+		})
+		return
+	}
+	defer src.Close()
+
+	author := authorFromCtx(c)
+	result, err := h.testService.ImportTestFromCSV(uint(uid), author, src)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, response.ErrorResponse{
+			Error:   "test import failed",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, response.SuccessResponse{
+		Message: "test imported successfully",
+		Data:    result,
+	})
+}
+
 func userIDFromCtx(c *gin.Context) (uint64, bool) {
 	val, ok := c.Get("user_id")
 	if !ok {
@@ -204,4 +254,13 @@ func userIDFromCtx(c *gin.Context) (uint64, bool) {
 		}
 	}
 	return 0, false
+}
+
+func authorFromCtx(c *gin.Context) string {
+	if email, ok := c.Get("email"); ok {
+		if s, ok := email.(string); ok && s != "" {
+			return s
+		}
+	}
+	return "Imported via CSV"
 }

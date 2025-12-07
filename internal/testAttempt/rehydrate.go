@@ -12,6 +12,7 @@ func RehydrateAttempt(
 	test TestID,
 	user UserID,
 	guestName *string,
+	fields map[string]string,
 	startedAt time.Time,
 	policy AttemptPolicy,
 	seed int64,
@@ -55,6 +56,7 @@ func RehydrateAttempt(
 		version:           version,
 		seed:              seed,
 		answers:           make(map[QuestionID]Answer, len(answers)),
+		fields:            make(map[string]string, len(fields)),
 		totalVisible:      len(order),
 		score:             score,
 		maxScore:          maxScore,
@@ -66,6 +68,9 @@ func RehydrateAttempt(
 	if guestName != nil {
 		name := *guestName
 		a.guestName = &name
+	}
+	for k, v := range fields {
+		a.fields[k] = v
 	}
 
 	a.order = make([]QuestionID, len(order))

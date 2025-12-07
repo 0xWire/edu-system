@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -57,6 +58,11 @@ export default function CreateTestForm({
   const [error, setError] = useState<string | null>(null);
   const isEditMode = mode === 'edit';
 
+  const ensureOptionArray = (options?: AnswerFormData[]) => {
+    const normalized = options && options.length > 0 ? options : [createEmptyOption(), createEmptyOption()];
+    return normalized;
+  };
+
   const buildInitialState = () => {
     if (!initialFormData) {
       return {
@@ -68,14 +74,18 @@ export default function CreateTestForm({
     return {
       title: initialFormData.title,
       description: initialFormData.description,
-      questions: initialFormData.questions.map((question) => ({
-        ...question,
-        options: question.options.map((opt) => ({
-          ...opt,
-          image_preview: opt.image_preview ?? opt.image_url ?? ''
-        })),
-        image_preview: question.image_preview ?? question.image_url ?? ''
-      }))
+      questions: initialFormData.questions.map((question) => {
+        const normalizedType = question.type ?? 'single';
+        return {
+          ...question,
+          type: normalizedType,
+          options: ensureOptionArray(question.options).map((opt) => ({
+            ...opt,
+            image_preview: opt.image_preview ?? opt.image_url ?? ''
+          })),
+          image_preview: question.image_preview ?? question.image_url ?? ''
+        };
+      })
     };
   };
 
@@ -201,7 +211,11 @@ export default function CreateTestForm({
     }
   };
 
-  const updateQuestion = (questionIndex: number, field: keyof QuestionFormData, value: any) => {
+  const updateQuestion = <K extends keyof QuestionFormData>(
+    questionIndex: number,
+    field: K,
+    value: QuestionFormData[K]
+  ) => {
     setFormData((prev) => ({
       ...prev,
       questions: prev.questions.map((q, i) =>
@@ -234,20 +248,25 @@ export default function CreateTestForm({
       ...prev,
       questions: prev.questions.map((q, i) =>
         i === questionIndex
-          ? { ...q, options: [...q.options, createEmptyOption()] }
+          ? { ...q, options: [...ensureOptionArray(q.options), createEmptyOption()] }
           : q
       )
     }));
   };
 
-  const updateOption = (questionIndex: number, optionIndex: number, field: keyof AnswerFormData, value: any) => {
+  const updateOption = <K extends keyof AnswerFormData>(
+    questionIndex: number,
+    optionIndex: number,
+    field: K,
+    value: AnswerFormData[K]
+  ) => {
     setFormData((prev) => ({
       ...prev,
       questions: prev.questions.map((q, i) =>
         i === questionIndex
           ? {
               ...q,
-              options: q.options.map((opt, oi) =>
+              options: ensureOptionArray(q.options).map((opt, oi) =>
                 oi === optionIndex ? { ...opt, [field]: value } : opt
               )
             }
@@ -263,10 +282,11 @@ export default function CreateTestForm({
         if (i !== questionIndex) {
           return q;
         }
-        if (q.options.length <= 2) {
+        const options = ensureOptionArray(q.options);
+        if (options.length <= 2) {
           return q;
         }
-        const nextOptions = q.options.filter((_, oi) => oi !== optionIndex);
+        const nextOptions = options.filter((_, oi) => oi !== optionIndex);
         const correctOption =
           q.correct_option === optionIndex
             ? 0
@@ -364,7 +384,7 @@ export default function CreateTestForm({
             rows={4}
             value={formData.description}
             onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-            placeholder="Briefly describe what this test covers and any instructions for participants."
+          placeholder="Briefly describe what this test covers and any instructions for participants."
             className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
           />
         </label>
@@ -386,204 +406,209 @@ export default function CreateTestForm({
         </div>
 
         <div className="space-y-6">
-          {formData.questions.map((question, questionIndex) => (
-            <article
-              key={`question-${questionIndex}`}
-              className="space-y-4 rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-[0_20px_60px_-50px_rgba(15,23,42,0.8)]"
-            >
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-indigo-200">
-                    Question {questionIndex + 1}
-                  </p>
-                  <p className="text-sm text-slate-300">
-                    Provide the prompt and mark the correct option.
-                  </p>
-                </div>
-                {formData.questions.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeQuestion(questionIndex)}
-                    className="self-start rounded-full border border-red-400/40 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-red-200 transition hover:bg-red-500/10"
-                  >
-                    Remove
-                  </button>
-                )}
-              </div>
+          {formData.questions.map((question, questionIndex) => {
+            const questionType = question.type ?? 'single';
+            const optionList = ensureOptionArray(question.options);
 
-              <label className="flex flex-col gap-2">
-                <span className="text-xs uppercase tracking-[0.3em] text-indigo-200">Question text *</span>
-                <input
-                  type="text"
-                  value={question.question_text}
-                  onChange={(e) => updateQuestion(questionIndex, 'question_text', e.target.value)}
-                  placeholder="Type your question"
-                  className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
-                />
-              </label>
-
-              <div className="space-y-3">
-                <span className="text-xs uppercase tracking-[0.3em] text-indigo-200">Question image</span>
-                {question.image_preview ? (
-                  <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
-                    <img
-                      src={question.image_preview}
-                      alt={`Question ${questionIndex + 1}`}
-                      className="max-h-48 w-full rounded-xl object-contain"
-                    />
-                    <div className="flex flex-wrap gap-3">
-                      <button
-                        type="button"
-                        onClick={() => handleQuestionImageUpload(questionIndex, null)}
-                        className="rounded-xl border border-red-400/40 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-red-200 transition hover:bg-red-500/10"
-                      >
-                        Remove image
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-white/15 bg-white/5 p-6 text-center text-sm text-slate-300 transition hover:border-indigo-300 hover:text-indigo-200">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        void handleQuestionImageUpload(questionIndex, file);
-                        event.target.value = '';
-                      }}
-                    />
-                    <span className="text-base font-semibold text-white">Upload image</span>
-                    <span className="text-xs text-slate-400">PNG, JPG or WEBP up to 5 MB</span>
-                  </label>
-                )}
-              </div>
-
-              {(question.type === 'single' || question.type === 'multi') && (
-                <section className="space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <span className="text-xs uppercase tracking-[0.3em] text-indigo-200">Answer options</span>
-                    <button
-                      type="button"
-                      onClick={() => addOption(questionIndex)}
-                      className="rounded-xl border border-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-indigo-200 transition hover:border-indigo-300 hover:text-white"
-                    >
-                      Add option
-                    </button>
-                  </div>
-
-                  <div className="space-y-4">
-                    {question.options.map((option, optionIndex) => (
-                      <div
-                        key={`question-${questionIndex}-option-${optionIndex}`}
-                        className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 md:flex-row md:gap-4"
-                      >
-                        <div className="flex items-start gap-3">
-                          {question.type === 'multi' ? (
-                            <input
-                              type="checkbox"
-                              checked={question.correct_options?.includes(optionIndex) ?? false}
-                              onChange={(e) => {
-                                const existing = question.correct_options ?? [];
-                                const next = e.target.checked
-                                  ? Array.from(new Set([...existing, optionIndex]))
-                                  : existing.filter((idx) => idx !== optionIndex);
-                                updateQuestion(questionIndex, 'correct_options', next);
-                                if (next.length === 1) {
-                                  updateQuestion(questionIndex, 'correct_option', next[0]);
-                                }
-                              }}
-                              className="mt-1 h-4 w-4 border-slate-400 text-indigo-500 focus:ring-indigo-500"
-                            />
-                          ) : (
-                            <input
-                              type="radio"
-                              name={`correct-${questionIndex}`}
-                              checked={question.correct_option === optionIndex}
-                              onChange={() => updateQuestion(questionIndex, 'correct_option', optionIndex)}
-                              className="mt-1 h-4 w-4 border-slate-400 text-indigo-500 focus:ring-indigo-500"
-                            />
-                          )}
-                          <div className="flex-1 space-y-3">
-                            <label className="flex flex-col gap-2">
-                              <span className="text-xs uppercase tracking-[0.3em] text-indigo-200">Option text *</span>
-                              <input
-                                type="text"
-                                value={option.answer_text}
-                                onChange={(e) => updateOption(questionIndex, optionIndex, 'answer_text', e.target.value)}
-                                placeholder={`Option ${optionIndex + 1}`}
-                                className="w-full rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-2 text-sm text-white placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
-                              />
-                            </label>
-
-                            <div className="space-y-2">
-                              {option.image_preview ? (
-                                <div className="flex flex-col gap-3">
-                                  <img
-                                    src={option.image_preview}
-                                    alt={`Option ${optionIndex + 1}`}
-                                    className="max-h-32 w-full rounded-xl object-contain"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOptionImageUpload(questionIndex, optionIndex, null)}
-                                    className="self-start rounded-xl border border-red-400/40 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-red-200 transition hover:bg-red-500/10"
-                                  >
-                                    Remove image
-                                  </button>
-                                </div>
-                              ) : (
-                                <label className="flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/10 bg-slate-950/40 p-4 text-center text-xs text-slate-400 transition hover:border-indigo-300 hover:text-indigo-200">
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={(event) => {
-                                      const file = event.target.files?.[0];
-                                      void handleOptionImageUpload(questionIndex, optionIndex, file);
-                                      event.target.value = '';
-                                    }}
-                                  />
-                                  <span>Add image</span>
-                                </label>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {question.options.length > 2 && (
-                          <button
-                            type="button"
-                            onClick={() => removeOption(questionIndex, optionIndex)}
-                            className="self-start rounded-full border border-red-400/40 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-red-200 transition hover:bg-red-500/10"
-                          >
-                            Remove option
-                          </button>
-                        )}
-                      </div>
-                    ))}
-
-                    <p className="text-xs text-slate-400">
-                      {question.type === 'multi'
-                        ? 'Select one or more correct options with the checkbox.'
-                        : 'Choose the correct answer using the radio button on the left.'}
+            return (
+              <article
+                key={`question-${questionIndex}`}
+                className="space-y-4 rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-[0_20px_60px_-50px_rgba(15,23,42,0.8)]"
+              >
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.3em] text-indigo-200">
+                      Question {questionIndex + 1}
+                    </p>
+                    <p className="text-sm text-slate-300">
+                      Provide the prompt and mark the correct option.
                     </p>
                   </div>
-                </section>
-              )}
-
-              {(question.type === 'text' || question.type === 'code') && (
-                <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200">
-                  <p className="text-xs uppercase tracking-[0.3em] text-indigo-200">
-                    {question.type === 'text' ? 'Open answer' : 'Code answer'}
-                  </p>
-                  <p className="text-xs text-slate-400">
-                    The response will be stored for manual grading. No options required.
-                  </p>
+                  {formData.questions.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeQuestion(questionIndex)}
+                      className="self-start rounded-full border border-red-400/40 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-red-200 transition hover:bg-red-500/10"
+                    >
+                      Remove
+                    </button>
+                  )}
                 </div>
-              )}
-            </article>
-          ))}
+
+                <label className="flex flex-col gap-2">
+                  <span className="text-xs uppercase tracking-[0.3em] text-indigo-200">Question text *</span>
+                  <input
+                    type="text"
+                    value={question.question_text}
+                    onChange={(e) => updateQuestion(questionIndex, 'question_text', e.target.value)}
+                    placeholder="Type your question"
+                    className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+                  />
+                </label>
+
+                <div className="space-y-3">
+                  <span className="text-xs uppercase tracking-[0.3em] text-indigo-200">Question image</span>
+                  {question.image_preview ? (
+                    <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <img
+                        src={question.image_preview}
+                        alt={`Question ${questionIndex + 1}`}
+                        className="max-h-48 w-full rounded-xl object-contain"
+                      />
+                      <div className="flex flex-wrap gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleQuestionImageUpload(questionIndex, null)}
+                          className="rounded-xl border border-red-400/40 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-red-200 transition hover:bg-red-500/10"
+                        >
+                          Remove image
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-white/15 bg-white/5 p-6 text-center text-sm text-slate-300 transition hover:border-indigo-300 hover:text-indigo-200">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          void handleQuestionImageUpload(questionIndex, file);
+                          event.target.value = '';
+                        }}
+                      />
+                      <span className="text-base font-semibold text-white">Upload image</span>
+                      <span className="text-xs text-slate-400">PNG, JPG or WEBP up to 5 MB</span>
+                    </label>
+                  )}
+                </div>
+
+                {(questionType === 'single' || questionType === 'multi') && (
+                  <section className="space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <span className="text-xs uppercase tracking-[0.3em] text-indigo-200">Answer options</span>
+                      <button
+                        type="button"
+                        onClick={() => addOption(questionIndex)}
+                        className="rounded-xl border border-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-indigo-200 transition hover:border-indigo-300 hover:text-white"
+                      >
+                        Add option
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {optionList.map((option, optionIndex) => (
+                        <div
+                          key={`question-${questionIndex}-option-${optionIndex}`}
+                          className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 md:flex-row md:gap-4"
+                        >
+                          <div className="flex items-start gap-3">
+                            {questionType === 'multi' ? (
+                              <input
+                                type="checkbox"
+                                checked={question.correct_options?.includes(optionIndex) ?? false}
+                                onChange={(e) => {
+                                  const existing = question.correct_options ?? [];
+                                  const next = e.target.checked
+                                    ? Array.from(new Set([...existing, optionIndex]))
+                                    : existing.filter((idx) => idx !== optionIndex);
+                                  updateQuestion(questionIndex, 'correct_options', next);
+                                  if (next.length === 1) {
+                                    updateQuestion(questionIndex, 'correct_option', next[0]);
+                                  }
+                                }}
+                                className="mt-1 h-4 w-4 border-slate-400 text-indigo-500 focus:ring-indigo-500"
+                              />
+                            ) : (
+                              <input
+                                type="radio"
+                                name={`correct-${questionIndex}`}
+                                checked={question.correct_option === optionIndex}
+                                onChange={() => updateQuestion(questionIndex, 'correct_option', optionIndex)}
+                                className="mt-1 h-4 w-4 border-slate-400 text-indigo-500 focus:ring-indigo-500"
+                              />
+                            )}
+                            <div className="flex-1 space-y-3">
+                              <label className="flex flex-col gap-2">
+                                <span className="text-xs uppercase tracking-[0.3em] text-indigo-200">Option text *</span>
+                                <input
+                                  type="text"
+                                  value={option.answer_text}
+                                  onChange={(e) => updateOption(questionIndex, optionIndex, 'answer_text', e.target.value)}
+                                  placeholder={`Option ${optionIndex + 1}`}
+                                  className="w-full rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-2 text-sm text-white placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+                                />
+                              </label>
+
+                              <div className="space-y-2">
+                                {option.image_preview ? (
+                                  <div className="flex flex-col gap-3">
+                                    <img
+                                      src={option.image_preview}
+                                      alt={`Option ${optionIndex + 1}`}
+                                      className="max-h-32 w-full rounded-xl object-contain"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOptionImageUpload(questionIndex, optionIndex, null)}
+                                      className="self-start rounded-xl border border-red-400/40 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-red-200 transition hover:bg-red-500/10"
+                                    >
+                                      Remove image
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <label className="flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/10 bg-slate-950/40 p-4 text-center text-xs text-slate-400 transition hover:border-indigo-300 hover:text-indigo-200">
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      onChange={(event) => {
+                                        const file = event.target.files?.[0];
+                                        void handleOptionImageUpload(questionIndex, optionIndex, file);
+                                        event.target.value = '';
+                                      }}
+                                    />
+                                    <span>Add image</span>
+                                  </label>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {optionList.length > 2 && (
+                            <button
+                              type="button"
+                              onClick={() => removeOption(questionIndex, optionIndex)}
+                              className="self-start rounded-full border border-red-400/40 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-red-200 transition hover:bg-red-500/10"
+                            >
+                              Remove option
+                            </button>
+                          )}
+                        </div>
+                      ))}
+
+                      <p className="text-xs text-slate-400">
+                        {questionType === 'multi'
+                          ? 'Select one or more correct options with the checkbox.'
+                          : 'Choose the correct answer using the radio button on the left.'}
+                      </p>
+                    </div>
+                  </section>
+                )}
+
+                {(questionType === 'text' || questionType === 'code') && (
+                  <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200">
+                    <p className="text-xs uppercase tracking-[0.3em] text-indigo-200">
+                      {questionType === 'text' ? 'Open answer' : 'Code answer'}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      The response will be stored for manual grading. No options required.
+                    </p>
+                  </div>
+                )}
+              </article>
+            );
+          })}
         </div>
 
         <div className="flex flex-wrap justify-end gap-3 pt-4">

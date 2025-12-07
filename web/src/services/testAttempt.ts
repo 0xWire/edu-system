@@ -110,4 +110,12 @@ export class TestAttemptService {
       throw error;
     }
   }
+
+  static async exportAttempts(assignmentId: string, format: 'csv' | 'xlsx'): Promise<Blob> {
+    const response = await api.get('/api/v1/attempts/export', {
+      params: { assignment_id: assignmentId, format },
+      responseType: 'blob'
+    });
+    return response.data as Blob;
+  }
 }

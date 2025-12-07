@@ -1,14 +1,16 @@
 package assignment
 
-import "encoding/json"
-
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type Assignment struct {
 	ID        string
 	TestID    string
 	OwnerID   uint
 	Title     string
+	Comment   string
 	CreatedAt time.Time
 	Template  json.RawMessage
 }
@@ -18,6 +20,7 @@ type AssignmentDescriptor struct {
 	TestID  string
 	OwnerID uint
 	Title   string
+	Comment string
 }
 
 func (a Assignment) Descriptor() AssignmentDescriptor {
@@ -26,5 +29,6 @@ func (a Assignment) Descriptor() AssignmentDescriptor {
 		TestID:  a.TestID,
 		OwnerID: a.OwnerID,
 		Title:   a.Title,
+		Comment: a.Comment,
 	}
 }

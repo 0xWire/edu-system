@@ -151,6 +151,10 @@ func (r *Repo) ListSummariesByAssignments(ctx context.Context, assignments []dom
 	}
 	out := make([]domain.AttemptSummary, 0, len(rows))
 	for _, row := range rows {
+		var fields map[string]string
+		if len(row.ParticipantFieldsJSON) > 0 {
+			_ = json.Unmarshal(row.ParticipantFieldsJSON, &fields)
+		}
 		out = append(out, domain.AttemptSummary{
 			AttemptID:    domain.AttemptID(row.ID),
 			AssignmentID: domain.AssignmentID(row.AssignmentID),
@@ -165,6 +169,7 @@ func (r *Repo) ListSummariesByAssignments(ctx context.Context, assignments []dom
 			Score:        row.Score,
 			MaxScore:     row.MaxScore,
 			PendingScore: row.PendingScore,
+			Fields:       fields,
 		})
 	}
 	return out, nil
@@ -228,23 +233,24 @@ func (r *Repo) countAttempts(ctx context.Context, assignmentID string, where fun
 }
 
 type attemptRow struct {
-	ID           string `gorm:"primaryKey;type:varchar(36)"`
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	AssignmentID string    `gorm:"not null;type:varchar(36);index"`
-	TestID       string    `gorm:"not null;type:varchar(36);index"`
-	UserID       uint64    `gorm:"not null;index"` // 0 = guest
-	GuestName    *string   `gorm:"type:varchar(64);null"`
-	StartedAt    time.Time `gorm:"not null;index"`
-	SubmittedAt  *time.Time
-	ExpiredAt    *time.Time
-	Status       string  `gorm:"type:varchar(16);not null;default:'active';index"`
-	DurationSec  int     `gorm:"not null;default:0"`
-	Version      int     `gorm:"not null;default:0;version"`
-	Seed         int64   `gorm:"not null;default:0"`
-	Score        float64 `gorm:"not null;default:0"`
-	MaxScore     float64 `gorm:"not null;default:0"`
-	PendingScore float64 `gorm:"not null;default:0"`
+	ID                    string `gorm:"primaryKey;type:varchar(36)"`
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	AssignmentID          string          `gorm:"not null;type:varchar(36);index"`
+	TestID                string          `gorm:"not null;type:varchar(36);index"`
+	UserID                uint64          `gorm:"not null;index"` // 0 = guest
+	GuestName             *string         `gorm:"type:varchar(64);null"`
+	ParticipantFieldsJSON json.RawMessage `gorm:"type:json"`
+	StartedAt             time.Time       `gorm:"not null;index"`
+	SubmittedAt           *time.Time
+	ExpiredAt             *time.Time
+	Status                string  `gorm:"type:varchar(16);not null;default:'active';index"`
+	DurationSec           int     `gorm:"not null;default:0"`
+	Version               int     `gorm:"not null;default:0;version"`
+	Seed                  int64   `gorm:"not null;default:0"`
+	Score                 float64 `gorm:"not null;default:0"`
+	MaxScore              float64 `gorm:"not null;default:0"`
+	PendingScore          float64 `gorm:"not null;default:0"`
 
 	ClientIP          string `gorm:"type:varchar(64)"`
 	ClientFingerprint string `gorm:"type:varchar(128)"`
@@ -301,6 +307,11 @@ func toRow(a *domain.Attempt) (*attemptRow, error) {
 		})
 	}
 
+	fieldsJSON, err := json.Marshal(a.ParticipantFields())
+	if err != nil {
+		return nil, err
+	}
+
 	var gname *string
 	if a.GuestName() != nil {
 		n := *a.GuestName()
@@ -323,24 +334,25 @@ func toRow(a *domain.Attempt) (*attemptRow, error) {
 	}
 
 	return &attemptRow{
-		ID:                string(a.ID()),
-		AssignmentID:      string(a.Assignment()),
-		TestID:            string(a.Test()),
-		UserID:            uint64(a.User()),
-		GuestName:         gname,
-		StartedAt:         a.StartedAt(),
-		SubmittedAt:       submitted,
-		ExpiredAt:         expired,
-		Status:            string(a.Status()),
-		DurationSec:       int(a.Duration() / time.Second),
-		Version:           a.Version(),
-		Seed:              a.Seed(),
-		Score:             score,
-		MaxScore:          max,
-		PendingScore:      a.PendingScore(),
-		ClientIP:          a.ClientIP(),
-		ClientFingerprint: a.ClientFingerprint(),
-		QuestionOpenedAt:  openedAt,
+		ID:                    string(a.ID()),
+		AssignmentID:          string(a.Assignment()),
+		TestID:                string(a.Test()),
+		UserID:                uint64(a.User()),
+		GuestName:             gname,
+		ParticipantFieldsJSON: fieldsJSON,
+		StartedAt:             a.StartedAt(),
+		SubmittedAt:           submitted,
+		ExpiredAt:             expired,
+		Status:                string(a.Status()),
+		DurationSec:           int(a.Duration() / time.Second),
+		Version:               a.Version(),
+		Seed:                  a.Seed(),
+		Score:                 score,
+		MaxScore:              max,
+		PendingScore:          a.PendingScore(),
+		ClientIP:              a.ClientIP(),
+		ClientFingerprint:     a.ClientFingerprint(),
+		QuestionOpenedAt:      openedAt,
 
 		PolicyJSON: policyJSON,
 		OrderJSON:  orderJSON,
@@ -388,12 +400,18 @@ func toDomain(r *attemptRow) (*domain.Attempt, error) {
 		}
 	}
 
+	fields := make(map[string]string)
+	if len(r.ParticipantFieldsJSON) > 0 {
+		_ = json.Unmarshal(r.ParticipantFieldsJSON, &fields)
+	}
+
 	attempt, err := domain.RehydrateAttempt(
 		domain.AttemptID(r.ID),
 		domain.AssignmentID(r.AssignmentID),
 		domain.TestID(r.TestID),
 		domain.UserID(r.UserID),
 		r.GuestName,
+		fields,
 		r.StartedAt,
 		policy,
 		r.Seed,

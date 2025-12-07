@@ -1,12 +1,15 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useI18n } from '@/contexts/LanguageContext';
 import { AssignmentService } from '@/services/assignment';
 import { TestAttemptService } from '@/services/testAttempt';
+import { withOrigin } from '@/lib/url';
 import type { AssignmentView } from '@/types/assignment';
 import type { AttemptSummary, AttemptDetails } from '@/types/testAttempt';
+import MathText from './MathText';
 
 export default function DashboardAssignments() {
   const router = useRouter();
@@ -74,9 +77,7 @@ export default function DashboardAssignments() {
   const handleCopyAssignmentLink = useCallback(
     async (assignment: AssignmentView) => {
       try {
-        const link = assignment.share_url.startsWith('http')
-          ? assignment.share_url
-          : `${typeof window !== 'undefined' ? window.location.origin : ''}${assignment.share_url}`;
+        const link = withOrigin(assignment.share_url);
         if (typeof navigator !== 'undefined' && navigator.clipboard) {
           await navigator.clipboard.writeText(link);
           setCopiedAssignmentId(assignment.assignment_id);
@@ -404,7 +405,9 @@ export default function DashboardAssignments() {
                               <p className="text-xs uppercase tracking-[0.3em] text-indigo-200">
                                 {t('testsDetail.questionLabel', { index: index + 1 })}
                               </p>
-                              <h4 className="mt-1 text-lg font-semibold text-white">{answer.question_text}</h4>
+                              <h4 className="mt-1 text-lg font-semibold text-white">
+                                <MathText text={answer.question_text} />
+                              </h4>
                               {answer.kind && (
                                 <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
                                   {t('dashboard.assignments.answerKind', { kind: answer.kind })}
@@ -446,7 +449,7 @@ export default function DashboardAssignments() {
                                   }`}
                                 >
                                   <div>
-                                    <p className="text-sm font-medium text-white">{opt.option_text}</p>
+                                    <MathText text={opt.option_text} className="text-sm font-medium text-white" />
                                     {opt.image_url && (
                                       <div className="mt-2 overflow-hidden rounded-lg border border-white/10">
                                         <img

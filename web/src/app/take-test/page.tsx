@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import TestAttemptPage from '@/components/TestAttempt/TestAttemptPage';
 import { useI18n } from '@/contexts/LanguageContext';
 import { AssignmentService } from '@/services/assignment';
 import type { AssignmentView } from '@/types/assignment';
 
-export default function TakeTestPage() {
+function TakeTestPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t, language } = useI18n();
@@ -17,6 +17,8 @@ export default function TakeTestPage() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [guestName, setGuestName] = useState('');
+  const [participantFields, setParticipantFields] = useState<Record<string, string>>({});
+  const [extraFields, setExtraFields] = useState<Record<string, string>>({});
   const [hasStarted, setHasStarted] = useState(false);
   const [assignment, setAssignment] = useState<AssignmentView | null>(null);
 
@@ -147,15 +149,47 @@ export default function TakeTestPage() {
     [firstName, lastName]
   );
 
-  const canStart = fullName.length > 0;
+  const canStart =
+    fullName.length > 0 &&
+    (!assignment?.fields ||
+      assignment.fields.every((field) => {
+        if (field.key === 'first_name') return firstName.trim().length > 0 || !field.required;
+        if (field.key === 'last_name') return lastName.trim().length > 0 || !field.required;
+        const val = extraFields[field.key]?.trim() ?? '';
+        return field.required ? val.length > 0 : true;
+      }));
 
   const handleStart = useCallback(() => {
     if (!canStart) {
       return;
     }
-    setGuestName(fullName);
+    const normalizedFields: Record<string, string> = {};
+    const fieldSpecs =
+      assignment?.fields && assignment.fields.length > 0
+        ? assignment.fields
+        : [
+            { key: 'first_name', label: 'First name', required: true },
+            { key: 'last_name', label: 'Last name', required: true }
+          ];
+
+    fieldSpecs.forEach((field) => {
+      let value = '';
+      if (field.key === 'first_name') {
+        value = firstName.trim();
+      } else if (field.key === 'last_name') {
+        value = lastName.trim();
+      } else {
+        value = (extraFields[field.key] ?? '').trim();
+      }
+      if (value) {
+        normalizedFields[field.key] = value;
+      }
+    });
+
+    setParticipantFields(normalizedFields);
+    setGuestName(fullName.trim());
     setHasStarted(true);
-  }, [canStart, fullName, setGuestName, setHasStarted]);
+  }, [canStart, fullName, assignment, extraFields, firstName, lastName]);
 
   if (!assignmentId) {
     return (
@@ -209,6 +243,12 @@ export default function TakeTestPage() {
                 <p className="mt-2 text-sm text-slate-200">
                   {t('takeTest.timeLimitLabel')}: <span className="font-semibold text-white">{timeLimitText}</span>
                 </p>
+                {assignment?.comment ? (
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
+                    <p className="text-xs uppercase tracking-[0.3em] text-indigo-200">{t('takeTest.commentLabel')}</p>
+                    <p className="mt-2 whitespace-pre-wrap text-slate-100">{assignment.comment}</p>
+                  </div>
+                ) : null}
               </div>
 
               <div className="space-y-4">
@@ -237,6 +277,28 @@ export default function TakeTestPage() {
                   />
                 </div>
                 <p className="text-xs text-slate-300">{t('takeTest.nameHelp')}</p>
+                {assignment?.fields
+                  ?.filter((field) => field.key !== 'first_name' && field.key !== 'last_name')
+                  .map((field) => (
+                    <div key={field.key}>
+                      <label htmlFor={`extra-${field.key}`} className="block text-sm font-medium text-indigo-200">
+                        {field.label}
+                        {field.required ? ' *' : ''}
+                      </label>
+                      <input
+                        id={`extra-${field.key}`}
+                        type="text"
+                        value={extraFields[field.key] ?? ''}
+                        onChange={(e) =>
+                          setExtraFields((prev) => ({
+                            ...prev,
+                            [field.key]: e.target.value
+                          }))
+                        }
+                        className="mt-2 w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/60"
+                      />
+                    </div>
+                  ))}
               </div>
             </div>
 
@@ -260,5 +322,19 @@ export default function TakeTestPage() {
     );
   }
 
-  return <TestAttemptPage assignmentId={assignmentId} guestName={guestName || undefined} />;
+  return (
+    <TestAttemptPage
+      assignmentId={assignmentId}
+      guestName={guestName || undefined}
+      participantFields={participantFields}
+    />
+  );
+}
+
+export default function TakeTestPage() {
+  return (
+    <Suspense fallback={null}>
+      <TakeTestPageInner />
+    </Suspense>
+  );
 }

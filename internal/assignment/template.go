@@ -19,14 +19,24 @@ type TemplateSnapshot struct {
 	AvailableUntil *time.Time                 `json:"available_until,omitempty"`
 	AttemptPolicy  testAttempt.AttemptPolicy  `json:"attempt_policy"`
 	Questions      []TemplateQuestionSnapshot `json:"questions"`
+	Fields         []TemplateField            `json:"fields,omitempty"`
+}
+
+type TemplateField struct {
+	Key      string `json:"key"`
+	Label    string `json:"label"`
+	Required bool   `json:"required"`
 }
 
 type TemplateQuestionSnapshot struct {
-	ID            string                   `json:"id"`
-	QuestionText  string                   `json:"question_text"`
-	ImageURL      string                   `json:"image_url,omitempty"`
-	CorrectOption int                      `json:"correct_option"`
-	Options       []TemplateOptionSnapshot `json:"options"`
+	ID             string                   `json:"id"`
+	Type           string                   `json:"type,omitempty"`
+	QuestionText   string                   `json:"question_text"`
+	ImageURL       string                   `json:"image_url,omitempty"`
+	CorrectOption  int                      `json:"correct_option"`
+	CorrectOptions []int                    `json:"correct_options,omitempty"`
+	Weight         float64                  `json:"weight,omitempty"`
+	Options        []TemplateOptionSnapshot `json:"options"`
 }
 
 type TemplateOptionSnapshot struct {
@@ -55,12 +65,17 @@ func BuildTemplateSnapshot(src *test.Test) (*TemplateSnapshot, error) {
 		Questions:      make([]TemplateQuestionSnapshot, 0, len(src.Questions)),
 	}
 	for _, q := range src.Questions {
+		qType := normalizeQuestionType(q.Type, len(q.Options))
+		weight := normalizeWeight(q.Weight)
 		tq := TemplateQuestionSnapshot{
-			ID:            q.ID,
-			QuestionText:  q.QuestionText,
-			ImageURL:      q.ImageURL,
-			CorrectOption: q.CorrectOption,
-			Options:       make([]TemplateOptionSnapshot, 0, len(q.Options)),
+			ID:             q.ID,
+			Type:           qType,
+			QuestionText:   q.QuestionText,
+			ImageURL:       q.ImageURL,
+			CorrectOption:  q.CorrectOption,
+			CorrectOptions: decodeCorrectOptions(q.CorrectJSON),
+			Weight:         weight,
+			Options:        make([]TemplateOptionSnapshot, 0, len(q.Options)),
 		}
 		for _, o := range q.Options {
 			tq.Options = append(tq.Options, TemplateOptionSnapshot{
@@ -110,14 +125,25 @@ func (tpl *TemplateSnapshot) ToAssignmentTemplate() *testAttempt.AssignmentTempl
 		AvailableUntil: tpl.AvailableUntil,
 		Policy:         tpl.AttemptPolicy,
 		Questions:      make([]testAttempt.TemplateQuestion, 0, len(tpl.Questions)),
+		Fields:         make([]testAttempt.AssignmentFieldSpec, 0, len(tpl.Fields)),
+	}
+	for _, f := range tpl.Fields {
+		out.Fields = append(out.Fields, testAttempt.AssignmentFieldSpec{
+			Key:      f.Key,
+			Label:    f.Label,
+			Required: f.Required,
+		})
 	}
 	for _, q := range tpl.Questions {
 		tq := testAttempt.TemplateQuestion{
-			ID:            testAttempt.QuestionID(q.ID),
-			QuestionText:  q.QuestionText,
-			ImageURL:      q.ImageURL,
-			CorrectOption: q.CorrectOption,
-			Options:       make([]testAttempt.TemplateOption, 0, len(q.Options)),
+			ID:             testAttempt.QuestionID(q.ID),
+			Type:           normalizeQuestionType(q.Type, len(q.Options)),
+			QuestionText:   q.QuestionText,
+			ImageURL:       q.ImageURL,
+			CorrectOption:  q.CorrectOption,
+			CorrectOptions: q.CorrectOptions,
+			Weight:         normalizeWeight(q.Weight),
+			Options:        make([]testAttempt.TemplateOption, 0, len(q.Options)),
 		}
 		for _, o := range q.Options {
 			tq.Options = append(tq.Options, testAttempt.TemplateOption{
@@ -146,4 +172,44 @@ func decodeAttemptPolicy(raw []byte, durationSec int) (testAttempt.AttemptPolicy
 		policy.MaxAttemptTime = time.Duration(durationSec) * time.Second
 	}
 	return policy, nil
+}
+
+func normalizeQuestionType(tpe string, optionsLen int) string {
+	switch tpe {
+	case "multi", "text", "code", "single":
+		return tpe
+	}
+	if optionsLen == 0 {
+		return "text"
+	}
+	return "single"
+}
+
+func normalizeWeight(w float64) float64 {
+	if w <= 0 {
+		return 1
+	}
+	return w
+}
+
+func decodeCorrectOptions(raw []byte) []int {
+	if len(raw) == 0 {
+		return nil
+	}
+	var obj map[string]any
+	if err := json.Unmarshal(raw, &obj); err != nil {
+		return nil
+	}
+	val, ok := obj["selected"]
+	if !ok {
+		return nil
+	}
+	arr, _ := val.([]any)
+	out := make([]int, 0, len(arr))
+	for _, v := range arr {
+		if f, ok := v.(float64); ok {
+			out = append(out, int(f))
+		}
+	}
+	return out
 }

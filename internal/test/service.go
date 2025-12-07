@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	"edu-system/internal/test/dto"
@@ -14,7 +15,8 @@ import (
 var ErrForbidden = errors.New("forbidden")
 
 type TestService interface {
-	CreateTest(ownerID uint, req *dto.CreateTestRequest) error
+	CreateTest(ownerID uint, req *dto.CreateTestRequest) (string, error)
+	ImportTestFromCSV(ownerID uint, author string, reader io.Reader) (*dto.ImportTestResponse, error)
 	GetTest(ownerID uint, testID string) (*dto.GetTestResponse, error)
 	ListTests(ownerID uint) ([]*dto.GetTestResponse, error)
 	UpdateTest(ownerID uint, testID string, req *dto.UpdateTestRequest) error
@@ -31,7 +33,35 @@ func NewTestService(testRepo TestRepository) TestService {
 	}
 }
 
-func (t testService) CreateTest(ownerID uint, req *dto.CreateTestRequest) error {
+func (t testService) CreateTest(ownerID uint, req *dto.CreateTestRequest) (string, error) {
+	test := buildTestModel(ownerID, req)
+	if err := t.testRepo.Create(test); err != nil {
+		return "", err
+	}
+	return test.ID, nil
+}
+
+func (t testService) ImportTestFromCSV(ownerID uint, author string, reader io.Reader) (*dto.ImportTestResponse, error) {
+	payload, err := parseCSVTemplate(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	payload.Author = author
+
+	testID, err := t.CreateTest(ownerID, payload)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.ImportTestResponse{
+		TestID:           testID,
+		Title:            payload.Title,
+		CreatedQuestions: len(payload.Questions),
+	}, nil
+}
+
+func buildTestModel(ownerID uint, req *dto.CreateTestRequest) *Test {
 	test := &Test{
 		AuthorID:    ownerID,
 		Author:      req.Author,
@@ -59,7 +89,7 @@ func (t testService) CreateTest(ownerID uint, req *dto.CreateTestRequest) error 
 		test.Questions = append(test.Questions, question)
 	}
 
-	return t.testRepo.Create(test)
+	return test
 }
 
 func (t testService) GetTest(ownerID uint, testID string) (*dto.GetTestResponse, error) {
@@ -91,11 +121,14 @@ func (t testService) GetTest(ownerID uint, testID string) (*dto.GetTestResponse,
 
 	for _, q := range test.Questions {
 		questionResponse := dto.QuestionResponse{
-			ID:            q.ID,
-			QuestionText:  q.QuestionText,
-			CorrectOption: q.CorrectOption,
-			ImageURL:      q.ImageURL,
-			Options:       make([]dto.OptionResponse, 0),
+			ID:             q.ID,
+			QuestionText:   q.QuestionText,
+			CorrectOption:  q.CorrectOption,
+			CorrectOptions: decodeCorrectOptions(q.CorrectJSON),
+			Type:           normalizeQuestionType(q.Type),
+			Weight:         normalizeWeight(q.Weight),
+			ImageURL:       q.ImageURL,
+			Options:        make([]dto.OptionResponse, 0),
 		}
 
 		for _, opt := range q.Options {

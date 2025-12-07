@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import type { QuestionView, AnswerPayload } from '@/types/testAttempt';
 import { useI18n } from '@/contexts/LanguageContext';
+import MathText from '../MathText';
 
 interface QuestionDisplayProps {
   question: QuestionView;
@@ -93,7 +94,9 @@ export default function QuestionDisplay({
             <p className="text-xs uppercase tracking-[0.3em] text-indigo-500">
               {t('question.tag')} {questionNumber}
             </p>
-            <h2 className="mt-1 text-2xl font-semibold text-slate-950">{question.question_text}</h2>
+            <h2 className="mt-1 text-2xl font-semibold text-slate-950">
+              <MathText text={question.question_text} />
+            </h2>
           </div>
           <div className="text-xs uppercase tracking-[0.3em] text-slate-400">
             {questionNumber} / {totalQuestions}
@@ -170,7 +173,7 @@ export default function QuestionDisplay({
                   {index + 1}
                 </span>
                 <div className="flex-1 space-y-2">
-                  <p className="text-sm font-medium text-slate-900">{option.option_text}</p>
+                  <MathText text={option.option_text} className="text-sm font-medium text-slate-900" />
                   {option.image_url && (
                     <div className="relative h-32 w-full max-w-sm overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
                       <Image

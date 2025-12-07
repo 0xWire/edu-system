@@ -1,12 +1,15 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useI18n } from '@/contexts/LanguageContext';
 import { AssignmentService } from '@/services/assignment';
 import { TestAttemptService } from '@/services/testAttempt';
+import { withOrigin } from '@/lib/url';
 import type { AssignmentView } from '@/types/assignment';
 import type { AttemptSummary, AttemptDetails } from '@/types/testAttempt';
+import MathText from './MathText';
 
 type CopyState = 'idle' | 'copied';
 
@@ -25,6 +28,7 @@ export default function AssignmentManagePage({ assignmentId }: AssignmentManageP
   const [attemptsLoading, setAttemptsLoading] = useState(false);
   const [attemptsError, setAttemptsError] = useState(false);
   const [isLoadingAssignment, setIsLoadingAssignment] = useState(true);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [detailsState, setDetailsState] = useState<{
     open: boolean;
     loading: boolean;
@@ -51,14 +55,7 @@ export default function AssignmentManagePage({ assignmentId }: AssignmentManageP
           return;
         }
         setAssignment(data);
-        if (typeof window !== 'undefined') {
-          const absoluteShare = data.share_url.startsWith('http')
-            ? data.share_url
-            : `${window.location.origin}${data.share_url}`;
-          setShareLink(absoluteShare);
-        } else {
-          setShareLink(data.share_url);
-        }
+        setShareLink(withOrigin(data.share_url));
       } catch (error) {
         console.error('Failed to fetch assignment', error);
         if (isMounted) {
@@ -259,6 +256,29 @@ export default function AssignmentManagePage({ assignmentId }: AssignmentManageP
     setDetailsState({ open: false, loading: false, data: null, error: false });
   }, []);
 
+  const handleExport = useCallback(
+    async (format: 'csv' | 'xlsx') => {
+      try {
+        setExportError(null);
+        const blob = await TestAttemptService.exportAttempts(assignmentId, format);
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const suffix = format === 'csv' ? 'csv' : 'xlsx';
+        const name = assignment?.title || 'assignment';
+        link.href = url;
+        link.download = `${name}-${assignmentId}.${suffix}`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Failed to export attempts', error);
+        setExportError(t('dashboard.assignments.exportError'));
+      }
+    },
+    [assignment?.title, assignmentId, t]
+  );
+
   const handleCopyShareLink = useCallback(() => {
     if (!shareLink) {
       return;
@@ -330,6 +350,12 @@ export default function AssignmentManagePage({ assignmentId }: AssignmentManageP
                   <p className="text-xs uppercase tracking-[0.3em] text-indigo-200">{t('takeTest.timeLimitLabel')}</p>
                   <p className="mt-2 text-sm text-slate-100">{timeLimitText}</p>
                 </div>
+                {assignment.comment ? (
+                  <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 sm:col-span-2">
+                    <p className="text-xs uppercase tracking-[0.3em] text-indigo-200">{t('takeTest.commentLabel')}</p>
+                    <p className="mt-2 whitespace-pre-wrap text-sm text-slate-100">{assignment.comment}</p>
+                  </div>
+                ) : null}
               </div>
             </div>
 
@@ -356,6 +382,26 @@ export default function AssignmentManagePage({ assignmentId }: AssignmentManageP
                 >
                   {copyState === 'copied' ? t('common.actions.copied') : t('common.actions.copyLink')}
                 </button>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleExport('csv')}
+                  className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-indigo-300 hover:bg-indigo-500/10"
+                >
+                  {t('dashboard.assignments.exportCsv')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExport('xlsx')}
+                  className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-indigo-300 hover:bg-indigo-500/10"
+                >
+                  {t('dashboard.assignments.exportXlsx')}
+                </button>
+                {exportError && (
+                  <span className="text-sm text-red-200">{exportError}</span>
+                )}
               </div>
             </div>
 
@@ -465,15 +511,6 @@ export default function AssignmentManagePage({ assignmentId }: AssignmentManageP
             >
               {t('common.actions.backToDashboard')}
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                router.push(assignment.share_url);
-              }}
-              className="rounded-2xl border border-indigo-300/40 bg-indigo-500/20 px-6 py-3 text-sm font-semibold text-indigo-100 transition hover:border-indigo-300 hover:bg-indigo-500/40"
-            >
-              {t('common.actions.openStudentView')}
-            </button>
           </div>
         </div>
       </div>
@@ -554,7 +591,9 @@ export default function AssignmentManagePage({ assignmentId }: AssignmentManageP
                               <p className="text-xs uppercase tracking-[0.3em] text-indigo-200">
                                 {t('testsDetail.questionLabel', { index: index + 1 })}
                               </p>
-                              <h4 className="mt-1 text-lg font-semibold text-white">{answer.question_text}</h4>
+                              <h4 className="mt-1 text-lg font-semibold text-white">
+                                <MathText text={answer.question_text} />
+                              </h4>
                               {answer.kind && (
                                 <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
                                   {t('dashboard.assignments.answerKind', { kind: answer.kind })}
@@ -596,7 +635,7 @@ export default function AssignmentManagePage({ assignmentId }: AssignmentManageP
                                   }`}
                                 >
                                   <div>
-                                    <p className="text-sm font-medium text-white">{opt.option_text}</p>
+                                    <MathText text={opt.option_text} className="text-sm font-medium text-white" />
                                     {opt.image_url && (
                                       <div className="mt-2 overflow-hidden rounded-lg border border-white/10">
                                         <img

@@ -1,0 +1,52 @@
+version: '3.9'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      - PORT=${PORT:-8080}
+      - DB_DRIVER=${DB_DRIVER:-sqlite}
+      - DB_DSN=${DB_DSN:-postgresql://edu_user:change-me@postgres:5432/edu_db?sslmode=disable}
+      - DB_PATH=${DB_PATH:-/data/database.db}
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
+    volumes:
+      - backend-data:/data
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL is required}
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL is required}
+      - PORT=3000
+      - HOST=0.0.0.0
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - backend
+
+  postgres:
+    image: postgres:15-alpine
+    profiles:
+      - postgres
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-edu_db}
+      - POSTGRES_USER=${POSTGRES_USER:-edu_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-change-me}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-edu_user} -d ${POSTGRES_DB:-edu_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  backend-data:
+    driver: local
+  pg-data:
+    driver: local

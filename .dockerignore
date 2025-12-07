@@ -1,0 +1,16 @@
+.git
+.github
+bin
+database.db
+*.log
+node_modules
+web/node_modules
+web/.next
+.idea
+.vscode
+coverage
+dist
+tmp
+.gocache
+Dockerfile.frontend
+Dockerfile.backend
