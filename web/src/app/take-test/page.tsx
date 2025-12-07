@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import TestAttemptPage from '@/components/TestAttempt/TestAttemptPage';
 import { useI18n } from '@/contexts/LanguageContext';
 import { AssignmentService } from '@/services/assignment';
 import type { AssignmentView } from '@/types/assignment';
 
-export default function TakeTestPage() {
+function TakeTestPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t, language } = useI18n();
@@ -328,5 +328,13 @@ export default function TakeTestPage() {
       guestName={guestName || undefined}
       participantFields={participantFields}
     />
+  );
+}
+
+export default function TakeTestPage() {
+  return (
+    <Suspense fallback={null}>
+      <TakeTestPageInner />
+    </Suspense>
   );
 }

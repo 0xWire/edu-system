@@ -7,14 +7,12 @@ services:
       dockerfile: Dockerfile.backend
     environment:
       - PORT=${PORT:-8080}
-      - DB_DRIVER=${DB_DRIVER:-postgres}
-      - DB_DSN=${DB_DSN:-postgresql://edu_user:edu_pass@postgres:5432/edu_db?sslmode=disable}
+      - DB_DRIVER=${DB_DRIVER:-sqlite}
+      - DB_DSN=${DB_DSN:-postgresql://edu_user:change-me@postgres:5432/edu_db?sslmode=disable}
       - DB_PATH=${DB_PATH:-/data/database.db}
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
     volumes:
       - backend-data:/data
-    depends_on:
-      - postgres
 
   frontend:
     build:
@@ -33,10 +31,12 @@ services:
 
   postgres:
     image: postgres:15-alpine
+    profiles:
+      - postgres
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-edu_db}
       - POSTGRES_USER=${POSTGRES_USER:-edu_user}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-change-me}
     volumes:
       - pg-data:/var/lib/postgresql/data
     healthcheck:

@@ -7,7 +7,6 @@ import { useI18n } from '@/contexts/LanguageContext';
 import { AssignmentService } from '@/services/assignment';
 import { TestAttemptService } from '@/services/testAttempt';
 import { withOrigin } from '@/lib/url';
-import { withOrigin } from '@/lib/url';
 import type { AssignmentView } from '@/types/assignment';
 import type { AttemptSummary, AttemptDetails } from '@/types/testAttempt';
 import MathText from './MathText';
