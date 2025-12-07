@@ -1,8 +1,9 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { TestService } from '@/services/test';
-import { GetTestResponse, Question } from '@/types/test';
+import { GetTestResponse } from '@/types/test';
 import MathText from './MathText';
 
 interface TestViewProps {
@@ -22,11 +23,7 @@ export default function TestView({ testId, onBack, mode = 'view' }: TestViewProp
   const [showResults, setShowResults] = useState(false);
   const [score, setScore] = useState(0);
 
-  useEffect(() => {
-    loadTest();
-  }, [testId]);
-
-  const loadTest = async () => {
+  const loadTest = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -34,11 +31,16 @@ export default function TestView({ testId, onBack, mode = 'view' }: TestViewProp
       const data = await TestService.getTest(testId);
       setTest(data);
     } catch (err) {
+      console.error(err);
       setError('An unexpected error occurred');
     } finally {
       setLoading(false);
     }
-  };
+  }, [testId]);
+
+  useEffect(() => {
+    void loadTest();
+  }, [loadTest]);
 
   const handleAnswerSelect = (questionIndex: number, optionIndex: number) => {
     if (mode === 'take' && !showResults) {

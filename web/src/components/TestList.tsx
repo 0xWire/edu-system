@@ -55,6 +55,7 @@ export default function TestList({ onEdit, onView, showActions = true, myTestsOn
         setError('Failed to delete test');
       }
     } catch (err) {
+      console.error(err);
       setError('An unexpected error occurred');
     } finally {
       setDeletingId(null);

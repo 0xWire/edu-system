@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -210,7 +211,11 @@ export default function CreateTestForm({
     }
   };
 
-  const updateQuestion = (questionIndex: number, field: keyof QuestionFormData, value: any) => {
+  const updateQuestion = <K extends keyof QuestionFormData>(
+    questionIndex: number,
+    field: K,
+    value: QuestionFormData[K]
+  ) => {
     setFormData((prev) => ({
       ...prev,
       questions: prev.questions.map((q, i) =>
@@ -249,7 +254,12 @@ export default function CreateTestForm({
     }));
   };
 
-  const updateOption = (questionIndex: number, optionIndex: number, field: keyof AnswerFormData, value: any) => {
+  const updateOption = <K extends keyof AnswerFormData>(
+    questionIndex: number,
+    optionIndex: number,
+    field: K,
+    value: AnswerFormData[K]
+  ) => {
     setFormData((prev) => ({
       ...prev,
       questions: prev.questions.map((q, i) =>

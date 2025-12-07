@@ -51,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
     } catch (error) {
+      console.error('Login failed', error);
       return {
         success: false,
         error: 'Network error. Please try again.'
@@ -84,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
     } catch (error) {
+      console.error('Registration failed', error);
       return {
         success: false,
         error: 'Network error. Please try again.'

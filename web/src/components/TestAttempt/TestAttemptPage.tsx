@@ -200,7 +200,7 @@ export default function TestAttemptPage({ assignmentId, guestName, participantFi
     if (!attempt || attempt.status !== 'active') {
       resetQuestionTimer();
     }
-  }, [attempt?.status, resetQuestionTimer]);
+  }, [attempt, resetQuestionTimer]);
 
   const handleSubmitTest = useCallback(async (currentAttempt?: AttemptView) => {
     const attemptToSubmit = currentAttempt ?? attempt;

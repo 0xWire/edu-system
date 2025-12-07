@@ -83,7 +83,7 @@ export default function TestLaunchSettingsModal({
         { key: 'last_name', label: 'Last name', required: true }
       ]);
     }
-  }, [open, test?.test_id]);
+  }, [open, test]);
 
   const addField = () => {
     const idx = fields.length + 1;

@@ -24,12 +24,11 @@ jobs:
           check-latest: true
           cache: true
 
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: v1.61.0
-          install-mode: go install
-          args: --out-format=github-actions
+        run: golangci-lint run --out-format=github-actions
 
   web-lint:
     name: Web Lint

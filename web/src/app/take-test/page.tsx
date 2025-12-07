@@ -149,10 +149,6 @@ export default function TakeTestPage() {
     [firstName, lastName]
   );
 
-  const requiresExtra = Boolean(
-    assignment?.fields?.some((f) => f.required && !['first_name', 'last_name'].includes(f.key))
-  );
-
   const canStart =
     fullName.length > 0 &&
     (!assignment?.fields ||
