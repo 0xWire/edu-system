@@ -1,103 +1,72 @@
 package main
 
 import (
-	"bytes"
-	"edu-system/internal/config"
-	"edu-system/internal/database"
-	"edu-system/internal/handlers"
-	"edu-system/internal/repository"
-	"edu-system/internal/routes"
-	"edu-system/internal/service"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
+
+	response "edu-system/internal/delivery"
+	"edu-system/internal/delivery/middleware"
 )
 
-func setupTestApp() *gin.Engine {
-	os.Setenv("DB_PATH", ":memory:")
-	os.Setenv("JWT_SECRET", "test-secret")
-
-	cfg := config.Load()
-	db := database.InitDB(cfg.DBPath)
-
-	userRepo := repository.NewUserRepository(db)
-	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
-	authHandler := handlers.NewAuthHandler(authService)
-
+func setupTestServer() *gin.Engine {
 	gin.SetMode(gin.TestMode)
-	engine := gin.New()
 
-	router := routes.NewRouter(authHandler, cfg.JWTSecret)
-	router.SetupRoutes(engine)
+	server := response.NewServer()
+	server.SetupMiddleware(middleware.CORS())
+	server.SetupRoutes()
 
-	return engine
+	return server.GetEngine()
 }
 
-func TestHealthCheck(t *testing.T) {
-	app := setupTestApp()
+func TestHealthEndpoint(t *testing.T) {
+	app := setupTestServer()
 
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/health", nil)
-	app.ServeHTTP(w, req)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	app.ServeHTTP(rec, req)
 
-	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), "ok")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
+	}
+	if body := rec.Body.String(); !strings.Contains(body, "Server is running") {
+		t.Fatalf("expected body to mention server status, got %q", body)
+	}
 }
 
-func TestUserRegistration(t *testing.T) {
-	app := setupTestApp()
+func TestDebugEndpoint(t *testing.T) {
+	app := setupTestServer()
 
-	registerData := map[string]string{
-		"email":      "test@example.com",
-		"password":   "123456",
-		"first_name": "Test",
-		"last_name":  "User",
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/debug", nil)
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
 	}
-
-	jsonData, _ := json.Marshal(registerData)
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/api/v1/auth/register", bytes.NewBuffer(jsonData))
-	req.Header.Set("Content-Type", "application/json")
-	app.ServeHTTP(w, req)
-
-	assert.Equal(t, 201, w.Code)
-	assert.Contains(t, w.Body.String(), "user registered successfully")
+	if body := rec.Body.String(); !strings.Contains(body, "Debug endpoint working") {
+		t.Fatalf("expected debug response, got %q", body)
+	}
 }
 
-func TestUserLogin(t *testing.T) {
-	app := setupTestApp()
+func TestCORSPreflight(t *testing.T) {
+	app := setupTestServer()
 
-	// Спочатку реєструємо користувача
-	registerData := map[string]string{
-		"email":      "test@example.com",
-		"password":   "123456",
-		"first_name": "Test",
-		"last_name":  "User",
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodOptions, "/api/v1/tests", nil)
+	req.Header.Set("Origin", "http://example.com")
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected status %d, got %d", http.StatusNoContent, rec.Code)
 	}
-
-	jsonData, _ := json.Marshal(registerData)
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/api/v1/auth/register", bytes.NewBuffer(jsonData))
-	req.Header.Set("Content-Type", "application/json")
-	app.ServeHTTP(w, req)
-
-	// Тепер тестуємо логін
-	loginData := map[string]string{
-		"email":    "test@example.com",
-		"password": "123456",
+	if origin := rec.Header().Get("Access-Control-Allow-Origin"); origin != "http://example.com" {
+		t.Fatalf("expected Access-Control-Allow-Origin header, got %q", origin)
 	}
-
-	jsonData, _ = json.Marshal(loginData)
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/api/v1/auth/login", bytes.NewBuffer(jsonData))
-	req.Header.Set("Content-Type", "application/json")
-	app.ServeHTTP(w, req)
-
-	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), "token")
+	if vary := rec.Header().Get("Vary"); vary != "Origin" {
+		t.Fatalf("expected Vary header to be Origin, got %q", vary)
+	}
 }

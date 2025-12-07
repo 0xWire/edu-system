@@ -117,11 +117,7 @@ func (tpl *AssignmentTemplate) VisibleQuestions() []VisibleQuestion {
 		}
 		opts := make([]VisibleOption, 0, len(q.Options))
 		for _, o := range q.Options {
-			opts = append(opts, VisibleOption{
-				ID:         o.ID,
-				OptionText: o.OptionText,
-				ImageURL:   o.ImageURL,
-			})
+			opts = append(opts, VisibleOption(o))
 		}
 		out = append(out, VisibleQuestion{
 			ID:           string(q.ID),
@@ -900,11 +896,7 @@ func makeQuestionView(v VisibleQuestion, opts []VisibleOption) QuestionView {
 		Options:      make([]OptionView, 0, len(opts)),
 	}
 	for _, o := range opts {
-		out.Options = append(out.Options, OptionView{
-			ID:         o.ID,
-			OptionText: o.OptionText,
-			ImageURL:   o.ImageURL,
-		})
+		out.Options = append(out.Options, OptionView(o))
 	}
 	return out
 }
