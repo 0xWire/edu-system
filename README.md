@@ -7,6 +7,15 @@
 ### Requirements
 - Docker & Docker Compose v2
 
+### Clone & prepare
+1. Clone the repo and enter it:
+   ```bash
+   git clone https://github.com/0xWire/edu-system.git
+   cd edu-system
+   ```
+2. Ensure Docker/Compose are installed.
+3. Prepare environment variables (see below).
+
 ### Environment variables (required, no defaults)
 - `PORT`: backend port inside the compose network (e.g. `8080`)
 - `DB_DRIVER`: `postgres` (default) or `sqlite`
