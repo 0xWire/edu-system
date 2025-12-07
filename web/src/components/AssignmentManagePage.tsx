@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useI18n } from '@/contexts/LanguageContext';
 import { AssignmentService } from '@/services/assignment';
 import { TestAttemptService } from '@/services/testAttempt';
+import { withOrigin } from '@/lib/url';
 import type { AssignmentView } from '@/types/assignment';
 import type { AttemptSummary, AttemptDetails } from '@/types/testAttempt';
 import MathText from './MathText';
@@ -54,14 +55,7 @@ export default function AssignmentManagePage({ assignmentId }: AssignmentManageP
           return;
         }
         setAssignment(data);
-        if (typeof window !== 'undefined') {
-          const absoluteShare = data.share_url.startsWith('http')
-            ? data.share_url
-            : `${window.location.origin}${data.share_url}`;
-          setShareLink(absoluteShare);
-        } else {
-          setShareLink(data.share_url);
-        }
+        setShareLink(withOrigin(data.share_url));
       } catch (error) {
         console.error('Failed to fetch assignment', error);
         if (isMounted) {

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { TestService } from '@/services/test';
 import { AssignmentService } from '@/services/assignment';
+import { withOrigin } from '@/lib/url';
 import type { GetTestResponse } from '@/types/test';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -66,9 +67,7 @@ export default function TestList({ onEdit, onView, showActions = true, myTestsOn
     setGeneratingId(test.test_id);
     try {
       const assignment = await AssignmentService.createAssignment({ test_id: test.test_id, title: test.title });
-      const absoluteLink = typeof window !== 'undefined'
-        ? `${window.location.origin}${assignment.share_url}`
-        : assignment.share_url;
+      const absoluteLink = withOrigin(assignment.share_url);
       setGeneratedLinks((prev) => ({ ...prev, [test.test_id]: absoluteLink }));
       if (typeof navigator !== 'undefined' && navigator.clipboard) {
         await navigator.clipboard.writeText(absoluteLink);

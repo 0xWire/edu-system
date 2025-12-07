@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useI18n } from '@/contexts/LanguageContext';
 import { AssignmentService } from '@/services/assignment';
 import { TestAttemptService } from '@/services/testAttempt';
+import { withOrigin } from '@/lib/url';
+import { withOrigin } from '@/lib/url';
 import type { AssignmentView } from '@/types/assignment';
 import type { AttemptSummary, AttemptDetails } from '@/types/testAttempt';
 import MathText from './MathText';
@@ -76,9 +78,7 @@ export default function DashboardAssignments() {
   const handleCopyAssignmentLink = useCallback(
     async (assignment: AssignmentView) => {
       try {
-        const link = assignment.share_url.startsWith('http')
-          ? assignment.share_url
-          : `${typeof window !== 'undefined' ? window.location.origin : ''}${assignment.share_url}`;
+        const link = withOrigin(assignment.share_url);
         if (typeof navigator !== 'undefined' && navigator.clipboard) {
           await navigator.clipboard.writeText(link);
           setCopiedAssignmentId(assignment.assignment_id);
