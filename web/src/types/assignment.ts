@@ -2,6 +2,7 @@ export interface AssignmentView {
   assignment_id: string;
   test_id: string;
   title: string;
+  comment?: string;
   fields?: AssignmentFieldSpec[];
   share_url: string;
   manage_url?: string;
@@ -13,6 +14,7 @@ export interface AssignmentView {
 export interface CreateAssignmentRequest {
   test_id: string;
   title?: string;
+  comment?: string;
   fields?: AssignmentFieldSpec[];
 }
 

@@ -30,7 +30,7 @@ interface TestLaunchSettingsModalProps {
   submitting: boolean;
   errorMessage?: string | null;
   onClose: () => void;
-  onSubmit: (values: LaunchSettingsFormValues, meta: { sessionTitle?: string; fields: AssignmentFieldSpec[] }) => void;
+  onSubmit: (values: LaunchSettingsFormValues, meta: { sessionTitle?: string; fields: AssignmentFieldSpec[]; comment?: string }) => void;
 }
 
 function deriveFormValues(test: GetTestResponse | null): LaunchSettingsFormValues {
@@ -67,6 +67,7 @@ export default function TestLaunchSettingsModal({
   const { t } = useI18n();
   const [form, setForm] = useState<LaunchSettingsFormValues>(() => deriveFormValues(test));
   const [sessionTitle, setSessionTitle] = useState('');
+  const [comment, setComment] = useState('');
   const [fields, setFields] = useState<AssignmentFieldSpec[]>([
     { key: 'first_name', label: 'First name', required: true },
     { key: 'last_name', label: 'Last name', required: true }
@@ -76,6 +77,7 @@ export default function TestLaunchSettingsModal({
     if (open) {
       setForm(deriveFormValues(test));
       setSessionTitle('');
+      setComment('');
       setFields([
         { key: 'first_name', label: 'First name', required: true },
         { key: 'last_name', label: 'Last name', required: true }
@@ -149,6 +151,17 @@ export default function TestLaunchSettingsModal({
                   placeholder={test.title}
                   onChange={(event) => setSessionTitle(event.target.value)}
                   className="rounded-xl border border-white/10 bg-slate-900 px-4 py-2 text-sm text-white focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/40"
+                />
+              </label>
+              <label className="flex flex-col gap-2 text-sm text-slate-200 md:col-span-2">
+                <span>{t('dashboard.launch.fields.comment')}</span>
+                <textarea
+                  value={comment}
+                  onChange={(event) => setComment(event.target.value)}
+                  rows={3}
+                  maxLength={500}
+                  className="rounded-xl border border-white/10 bg-slate-900 px-4 py-2 text-sm text-white focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/40"
+                  placeholder={t('dashboard.launch.fields.commentPlaceholder')}
                 />
               </label>
               <div className="md:col-span-2 space-y-3">
@@ -351,6 +364,7 @@ export default function TestLaunchSettingsModal({
             onClick={() =>
               onSubmit(form, {
                 sessionTitle,
+                comment: comment.trim(),
                 fields: fields.map((f, i) => ({
                   key: f.key || `field_${i + 1}`,
                   label: f.label.trim() || t('dashboard.launch.fields.customFieldPlaceholder'),

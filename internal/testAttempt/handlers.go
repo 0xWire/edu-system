@@ -282,6 +282,7 @@ func (h *Handlers) Export(c *gin.Context) {
 
 	var fieldSpecs []AssignmentFieldSpec
 	var fieldHeaders []string
+	commentValue := escapeExportValue(descriptor.Comment)
 	if descriptor.Template != nil {
 		fieldSpecs = descriptor.Template.Fields
 		fieldHeaders = make([]string, 0, len(fieldSpecs))
@@ -300,7 +301,7 @@ func (h *Handlers) Export(c *gin.Context) {
 		w := csv.NewWriter(buf)
 		header := []string{"Attempt ID", "Participant", "Type"}
 		header = append(header, fieldHeaders...)
-		header = append(header, "Status", "Score", "Max Score", "Pending", "Started At", "Submitted At", "Expired At", "Duration Sec")
+		header = append(header, "Comment", "Status", "Score", "Max Score", "Pending", "Started At", "Submitted At", "Expired At", "Duration Sec")
 		_ = w.Write(header)
 		for _, a := range attempts {
 			participant := buildParticipantName(a)
@@ -314,21 +315,22 @@ func (h *Handlers) Export(c *gin.Context) {
 				expired = a.ExpiredAt.Format(time.RFC3339)
 			}
 			record := []string{
-				string(a.AttemptID),
-				participant.Name,
-				participant.Kind,
+				escapeExportValue(string(a.AttemptID)),
+				escapeExportValue(participant.Name),
+				escapeExportValue(participant.Kind),
 			}
 			for _, spec := range fieldSpecs {
-				record = append(record, a.Fields[spec.Key])
+				record = append(record, escapeExportValue(a.Fields[spec.Key]))
 			}
 			record = append(record,
-				string(a.Status),
+				commentValue,
+				escapeExportValue(string(a.Status)),
 				fmt.Sprintf("%.2f", a.Score),
 				fmt.Sprintf("%.2f", a.MaxScore),
 				fmt.Sprintf("%.2f", a.PendingScore),
-				started,
-				submitted,
-				expired,
+				escapeExportValue(started),
+				escapeExportValue(submitted),
+				escapeExportValue(expired),
 				fmt.Sprintf("%d", int(a.Duration/time.Second)),
 			)
 			_ = w.Write(record)
@@ -343,7 +345,7 @@ func (h *Handlers) Export(c *gin.Context) {
 	sheet := f.GetSheetName(f.GetActiveSheetIndex())
 	header := []string{"Attempt ID", "Participant", "Type"}
 	header = append(header, fieldHeaders...)
-	header = append(header, "Status", "Score", "Max Score", "Pending", "Started At", "Submitted At", "Expired At", "Duration Sec")
+	header = append(header, "Comment", "Status", "Score", "Max Score", "Pending", "Started At", "Submitted At", "Expired At", "Duration Sec")
 	for i, hname := range header {
 		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
 		_ = f.SetCellValue(sheet, cell, hname)
@@ -352,27 +354,28 @@ func (h *Handlers) Export(c *gin.Context) {
 		r := rowIdx + 2
 		participant := buildParticipantName(a)
 		values := []interface{}{
-			string(a.AttemptID),
-			participant.Name,
-			participant.Kind,
+			escapeExportValue(string(a.AttemptID)),
+			escapeExportValue(participant.Name),
+			escapeExportValue(participant.Kind),
 		}
 		for _, spec := range fieldSpecs {
-			values = append(values, a.Fields[spec.Key])
+			values = append(values, escapeExportValue(a.Fields[spec.Key]))
 		}
 		values = append(values,
-			string(a.Status),
+			commentValue,
+			escapeExportValue(string(a.Status)),
 			fmt.Sprintf("%.2f", a.Score),
 			fmt.Sprintf("%.2f", a.MaxScore),
 			fmt.Sprintf("%.2f", a.PendingScore),
-			a.StartedAt.Format(time.RFC3339),
+			escapeExportValue(a.StartedAt.Format(time.RFC3339)),
 		)
 		if a.SubmittedAt != nil {
-			values = append(values, a.SubmittedAt.Format(time.RFC3339))
+			values = append(values, escapeExportValue(a.SubmittedAt.Format(time.RFC3339)))
 		} else {
 			values = append(values, "")
 		}
 		if a.ExpiredAt != nil {
-			values = append(values, a.ExpiredAt.Format(time.RFC3339))
+			values = append(values, escapeExportValue(a.ExpiredAt.Format(time.RFC3339)))
 		} else {
 			values = append(values, "")
 		}
@@ -437,6 +440,20 @@ func participantNameFromFields(fields map[string]string) string {
 		return last
 	}
 	return ""
+}
+
+func escapeExportValue(val string) string {
+	if val == "" {
+		return ""
+	}
+	trimmed := strings.TrimSpace(val)
+	if trimmed == "" {
+		return ""
+	}
+	if strings.HasPrefix(trimmed, "=") || strings.HasPrefix(trimmed, "+") || strings.HasPrefix(trimmed, "-") || strings.HasPrefix(trimmed, "@") || strings.HasPrefix(trimmed, "\t") {
+		return "'" + trimmed
+	}
+	return trimmed
 }
 
 // GET /v1/attempts/:id/details

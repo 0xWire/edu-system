@@ -355,6 +355,12 @@ export default function AssignmentManagePage({ assignmentId }: AssignmentManageP
                   <p className="text-xs uppercase tracking-[0.3em] text-indigo-200">{t('takeTest.timeLimitLabel')}</p>
                   <p className="mt-2 text-sm text-slate-100">{timeLimitText}</p>
                 </div>
+                {assignment.comment ? (
+                  <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 sm:col-span-2">
+                    <p className="text-xs uppercase tracking-[0.3em] text-indigo-200">{t('takeTest.commentLabel')}</p>
+                    <p className="mt-2 whitespace-pre-wrap text-sm text-slate-100">{assignment.comment}</p>
+                  </div>
+                ) : null}
               </div>
             </div>
 

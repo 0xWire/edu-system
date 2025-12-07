@@ -32,10 +32,10 @@ type TestSettingsSummary struct {
 }
 
 func (s *Service) Create(ctx context.Context, ownerID uint, testID string, title string) (*Assignment, error) {
-	return s.CreateWithTemplate(ctx, ownerID, testID, title, nil)
+	return s.CreateWithTemplate(ctx, ownerID, testID, title, "", nil)
 }
 
-func (s *Service) CreateWithTemplate(ctx context.Context, ownerID uint, testID string, title string, fields []TemplateField) (*Assignment, error) {
+func (s *Service) CreateWithTemplate(ctx context.Context, ownerID uint, testID string, title string, comment string, fields []TemplateField) (*Assignment, error) {
 	t, err := s.tests.GetByID(testID)
 	if err != nil {
 		return nil, err
@@ -67,6 +67,7 @@ func (s *Service) CreateWithTemplate(ctx context.Context, ownerID uint, testID s
 		TestID:    testID,
 		OwnerID:   ownerID,
 		Title:     name,
+		Comment:   strings.TrimSpace(comment),
 		CreatedAt: s.clock(),
 		Template:  rawSnapshot,
 	}

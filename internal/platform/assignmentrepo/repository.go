@@ -60,6 +60,7 @@ func fromDomain(a *assignment.Assignment) assignmentRow {
 		TestID:           a.TestID,
 		OwnerID:          a.OwnerID,
 		Title:            a.Title,
+		Comment:          a.Comment,
 		CreatedAt:        a.CreatedAt,
 		TemplateSnapshot: []byte(a.Template),
 	}
@@ -71,6 +72,7 @@ func toDomain(row *assignmentRow) *assignment.Assignment {
 		TestID:    row.TestID,
 		OwnerID:   row.OwnerID,
 		Title:     row.Title,
+		Comment:   row.Comment,
 		CreatedAt: row.CreatedAt,
 		Template:  row.TemplateSnapshot,
 	}
@@ -84,6 +86,7 @@ type assignmentRow struct {
 	TestID           string `gorm:"not null;type:varchar(36);index"`
 	OwnerID          uint   `gorm:"not null;index"`
 	Title            string `gorm:"type:varchar(255)"`
+	Comment          string `gorm:"type:varchar(500)"`
 	TemplateSnapshot []byte `gorm:"type:json"`
 }
 

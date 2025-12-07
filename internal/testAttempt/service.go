@@ -61,6 +61,7 @@ type AssignmentDescriptor struct {
 	TestID   TestID
 	OwnerID  UserID
 	Title    string
+	Comment  string
 	Template *AssignmentTemplate
 }
 

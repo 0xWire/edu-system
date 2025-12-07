@@ -41,7 +41,7 @@ func (h *Handlers) Create(c *gin.Context) {
 		})
 	}
 
-	assignment, err := h.svc.CreateWithTemplate(c, uint(ownerID), req.TestID, req.Title, fields)
+	assignment, err := h.svc.CreateWithTemplate(c, uint(ownerID), req.TestID, req.Title, strings.TrimSpace(req.Comment), fields)
 	if err != nil {
 		status := http.StatusInternalServerError
 		msg := err.Error()
@@ -117,6 +117,7 @@ func toView(a Assignment, settings *TestSettingsSummary, isOwner bool) dto.Assig
 		AssignmentID: a.ID,
 		TestID:       a.TestID,
 		Title:        a.Title,
+		Comment:      a.Comment,
 		ShareURL:     "/take-test?assignmentId=" + a.ID,
 		IsOwner:      isOwner,
 	}

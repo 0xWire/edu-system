@@ -85,21 +85,8 @@ export default function DashboardTests() {
     router.push(`/dashboard/tests/${testId}`);
   }, [router]);
 
-  const handleGenerateShareLink = useCallback(
-    async (testId: string) => {
-      try {
-        const assignment = await AssignmentService.createAssignment({ test_id: testId });
-        const target = assignment.manage_url ?? assignment.share_url;
-        router.push(target);
-      } catch (error) {
-        console.error('Failed to generate assignment link', error);
-      }
-    },
-    [router]
-  );
-
   const handleLaunchSubmit = useCallback(
-    async (values: LaunchSettingsFormValues, meta: { sessionTitle?: string; fields: AssignmentFieldSpec[] }) => {
+    async (values: LaunchSettingsFormValues, meta: { sessionTitle?: string; fields: AssignmentFieldSpec[]; comment?: string }) => {
       if (!configuringTest) {
         return;
       }
@@ -143,6 +130,7 @@ export default function DashboardTests() {
         const assignment = await AssignmentService.createAssignment({
           test_id: configuringTest.test_id,
           title: meta.sessionTitle?.trim() || configuringTest.title,
+          comment: meta.comment,
           fields: meta.fields
         });
         setTests((prev) =>
@@ -345,15 +333,6 @@ export default function DashboardTests() {
                           className="flex-1 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-600"
                         >
                           {t('dashboard.launch.actions.start')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            void handleGenerateShareLink(test.test_id);
-                          }}
-                          className="rounded-xl border border-indigo-500 px-4 py-2 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-500 hover:text-white"
-                        >
-                          {t('common.actions.share')}
                         </button>
                       </div>
                     </article>

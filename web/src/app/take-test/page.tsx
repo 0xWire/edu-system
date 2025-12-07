@@ -247,6 +247,12 @@ export default function TakeTestPage() {
                 <p className="mt-2 text-sm text-slate-200">
                   {t('takeTest.timeLimitLabel')}: <span className="font-semibold text-white">{timeLimitText}</span>
                 </p>
+                {assignment?.comment ? (
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
+                    <p className="text-xs uppercase tracking-[0.3em] text-indigo-200">{t('takeTest.commentLabel')}</p>
+                    <p className="mt-2 whitespace-pre-wrap text-slate-100">{assignment.comment}</p>
+                  </div>
+                ) : null}
               </div>
 
               <div className="space-y-4">
