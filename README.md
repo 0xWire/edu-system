@@ -23,7 +23,7 @@
 - `DB_PATH`: SQLite path (used only if `DB_DRIVER=sqlite`, e.g. `/data/database.db`)
 - `JWT_SECRET`: strong random secret
 - `NEXT_PUBLIC_API_URL`: frontend API target, usually `http://backend:8080`
-- `INTERNAL_API_URL`: internal backend URL used by Next.js rewrites (default `http://backend:8080`)
+- `INTERNAL_API_URL`: internal backend URL used by Next.js rewrites (default `http://backend:8080`, must not point to public domain)
 - `FRONTEND_PORT` (optional): host port to expose frontend (default `3000`)
 - `EDUS_HOST` (optional): Traefik host for frontend routing (default `edus.r4nol.dev`)
 - AI pipeline (optional, for `/api/v1/ai/pipeline`):
@@ -81,6 +81,7 @@ docker compose down
 ### Traefik (optional)
 - The `frontend` service includes Traefik labels for `edus.r4nol.dev` (or `EDUS_HOST`).
 - API traffic (`/api/*`) is routed directly to `backend` by Traefik.
+- `traefik.docker.network=global_network` is set for both services so Traefik does not pick the internal compose network and return `504`.
 - For domain deployment, recommended:
   - `NEXT_PUBLIC_API_URL=https://edus.r4nol.dev`
   - `INTERNAL_API_URL=http://backend:8080`

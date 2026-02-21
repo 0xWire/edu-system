@@ -35,7 +35,7 @@ const getPublicApiUrl = (): string => {
 };
 
 const PUBLIC_API_URL = getPublicApiUrl();
-const INTERNAL_API_URL = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || DEFAULT_INTERNAL_API_URL;
+const INTERNAL_API_URL = process.env.INTERNAL_API_URL || DEFAULT_INTERNAL_API_URL;
 
 const nextConfig: NextConfig = {
   env: {

@@ -19,6 +19,7 @@ services:
       - global_network
     labels:
       - traefik.enable=true
+      - traefik.docker.network=global_network
       - traefik.http.routers.edus-api.rule=Host(`${EDUS_HOST:-edus.r4nol.dev}`) && PathPrefix(`/api`)
       - traefik.http.routers.edus-api.entrypoints=websecure
       - traefik.http.routers.edus-api.tls.certresolver=le
@@ -50,6 +51,7 @@ services:
       - global_network
     labels:
       - traefik.enable=true
+      - traefik.docker.network=global_network
       - traefik.http.routers.edus.rule=Host(`${EDUS_HOST:-edus.r4nol.dev}`)
       - traefik.http.routers.edus.entrypoints=websecure
       - traefik.http.routers.edus.tls.certresolver=le
