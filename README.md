@@ -24,6 +24,14 @@
 - `JWT_SECRET`: strong random secret
 - `NEXT_PUBLIC_API_URL`: frontend API target, usually `http://backend:8080`
 - `FRONTEND_PORT` (optional): host port to expose frontend (default `3000`)
+- AI pipeline (optional, for `/api/v1/ai/pipeline`):
+  - `AI_PROVIDER_ORDER`: provider fallback order, comma-separated (`openai,gemini,deepseek,openrouter,local`)
+  - `AI_HTTP_TIMEOUT_SEC`: timeout per provider request in seconds (default `90`)
+  - `OPENAI_API_KEY`, `OPENAI_MODEL` (default `gpt-4o-mini`), `OPENAI_BASE_URL` (default `https://api.openai.com/v1`)
+  - `GEMINI_API_KEY`, `GEMINI_MODEL` (default `gemini-2.0-flash`), `GEMINI_BASE_URL` (default `https://generativelanguage.googleapis.com`)
+  - `DEEPSEEK_API_KEY`, `DEEPSEEK_MODEL` (default `deepseek-chat`), `DEEPSEEK_BASE_URL` (default `https://api.deepseek.com`)
+  - `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` (default `openai/gpt-4o-mini`), `OPENROUTER_BASE_URL` (default `https://openrouter.ai/api/v1`)
+  - `LOCAL_AI_MODEL` (default `llama3.1:8b-instruct`), `LOCAL_AI_BASE_URL` (default `http://localhost:11434/v1`), `LOCAL_AI_API_KEY` (optional for local gateways)
 - Postgres service (if using the bundled DB container with profile `postgres`):
   - `POSTGRES_DB` (default `edu_db`)
   - `POSTGRES_USER` (default `edu_user`)
@@ -66,4 +74,37 @@
 ### Stop
 ```bash
 docker compose down
+```
+
+## AI 4-layer pipeline (teacher assistant)
+
+New authenticated endpoints:
+- `GET /api/v1/ai/providers` — list available providers and configured models.
+- `POST /api/v1/ai/pipeline` — run 4 layers:
+  1. Plan creation from methodical material.
+  2. Draft generation (test variants, notes, practice test).
+  3. Validation against the source material.
+  4. Final refinement and teacher-ready package.
+
+Minimal request example:
+```json
+{
+  "material": {
+    "title": "Linear Algebra: Matrices",
+    "text": "Your methodical material text here..."
+  },
+  "generation_config": {
+    "variants_count": 3,
+    "questions_per_variant": 15,
+    "difficulty": "medium",
+    "audience": "first-year students",
+    "output_language": "ru"
+  },
+  "provider": {
+    "order": ["openai", "gemini", "deepseek", "openrouter", "local"],
+    "layer_order": {
+      "validate": ["gemini", "openai", "local"]
+    }
+  }
+}
 ```

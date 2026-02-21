@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 
+	"edu-system/internal/ai"
 	"github.com/gin-gonic/gin"
 
 	"edu-system/internal/assignment"
@@ -41,12 +42,14 @@ func main() {
 		platform.AllowGuestsAndOwnerPolicy{Tests: testRepo},
 		platform.GormUserDirectory{DB: db},
 	)
+	aiService := ai.NewService(cfg)
 
 	// Initialize handlers
 	authHandler := auth.NewAuthHandler(authService)
 	testHandler := test.NewTestHandler(testService)
 	testAttemptHandler := testAttempt.NewHandlers(testAttemptService)
 	assignmentHandler := assignment.NewHandlers(assignmentService)
+	aiHandler := ai.NewHandler(aiService)
 
 	// Set gin mode
 	gin.SetMode(cfg.GinMode)
@@ -70,6 +73,7 @@ func main() {
 		func(v1 gin.IRouter) { test.RegisterRoutes(v1, testHandler, jwtMW) },
 		func(v1 gin.IRouter) { assignment.RegisterRoutes(v1, assignmentHandler, jwtMW, optionalJWTMW) },
 		func(v1 gin.IRouter) { testAttempt.RegisterRoutes(v1, testAttemptHandler, optionalJWTMW, jwtMW) },
+		func(v1 gin.IRouter) { ai.RegisterRoutes(v1, aiHandler, jwtMW) },
 	)
 
 	// Start server
