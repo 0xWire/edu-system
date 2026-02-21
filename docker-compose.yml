@@ -1,10 +1,9 @@
-version: '3.9'
-
 services:
   backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
+    user: "0:0"
     environment:
       - PORT=${PORT:-8080}
       - DB_DRIVER=${DB_DRIVER:-sqlite}
@@ -13,6 +12,7 @@ services:
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
     volumes:
       - backend-data:/data
+    restart: unless-stopped
 
   frontend:
     build:
@@ -40,6 +40,7 @@ services:
       - traefik.http.routers.edus.entrypoints=websecure
       - traefik.http.routers.edus.tls.certresolver=le
       - traefik.http.services.edus.loadbalancer.server.port=3000
+    restart: unless-stopped
 
   postgres:
     image: postgres:15-alpine
