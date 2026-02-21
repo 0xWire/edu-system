@@ -24,6 +24,7 @@
 - `JWT_SECRET`: strong random secret
 - `NEXT_PUBLIC_API_URL`: frontend API target, usually `http://backend:8080`
 - `FRONTEND_PORT` (optional): host port to expose frontend (default `3000`)
+- `EDUS_HOST` (optional): Traefik host for frontend routing (default `edus.r4nol.dev`)
 - AI pipeline (optional, for `/api/v1/ai/pipeline`):
   - `AI_PROVIDER_ORDER`: provider fallback order, comma-separated (`openai,gemini,deepseek,openrouter,local`)
   - `AI_HTTP_TIMEOUT_SEC`: timeout per provider request in seconds (default `90`)
@@ -75,6 +76,13 @@
 ```bash
 docker compose down
 ```
+
+### Traefik (optional)
+- The `frontend` service includes Traefik labels for `edus.r4nol.dev` (or `EDUS_HOST`).
+- Ensure external Docker network `global_network` exists:
+  ```bash
+  docker network create global_network
+  ```
 
 ## AI 4-layer pipeline (teacher assistant)
 

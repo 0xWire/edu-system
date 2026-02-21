@@ -24,10 +24,22 @@ services:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL is required}
       - PORT=3000
       - HOST=0.0.0.0
+      - EDUS_HOST=${EDUS_HOST:-edus.r4nol.dev}
+    expose:
+      - "3000"
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     depends_on:
       - backend
+    networks:
+      - default
+      - global_network
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.edus.rule=Host(`${EDUS_HOST:-edus.r4nol.dev}`)
+      - traefik.http.routers.edus.entrypoints=websecure
+      - traefik.http.routers.edus.tls.certresolver=le
+      - traefik.http.services.edus.loadbalancer.server.port=3000
 
   postgres:
     image: postgres:15-alpine
@@ -50,3 +62,7 @@ volumes:
     driver: local
   pg-data:
     driver: local
+
+networks:
+  global_network:
+    external: true
