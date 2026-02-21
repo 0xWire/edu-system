@@ -12,6 +12,18 @@ services:
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
     volumes:
       - backend-data:/data
+    expose:
+      - "8080"
+    networks:
+      - default
+      - global_network
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.edus-api.rule=Host(`${EDUS_HOST:-edus.r4nol.dev}`) && PathPrefix(`/api`)
+      - traefik.http.routers.edus-api.entrypoints=websecure
+      - traefik.http.routers.edus-api.tls.certresolver=le
+      - traefik.http.routers.edus-api.priority=100
+      - traefik.http.services.edus-api.loadbalancer.server.port=8080
     restart: unless-stopped
 
   frontend:
@@ -41,6 +53,7 @@ services:
       - traefik.http.routers.edus.rule=Host(`${EDUS_HOST:-edus.r4nol.dev}`)
       - traefik.http.routers.edus.entrypoints=websecure
       - traefik.http.routers.edus.tls.certresolver=le
+      - traefik.http.routers.edus.priority=1
       - traefik.http.services.edus.loadbalancer.server.port=3000
     restart: unless-stopped
 

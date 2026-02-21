@@ -80,6 +80,7 @@ docker compose down
 
 ### Traefik (optional)
 - The `frontend` service includes Traefik labels for `edus.r4nol.dev` (or `EDUS_HOST`).
+- API traffic (`/api/*`) is routed directly to `backend` by Traefik.
 - For domain deployment, recommended:
   - `NEXT_PUBLIC_API_URL=https://edus.r4nol.dev`
   - `INTERNAL_API_URL=http://backend:8080`
