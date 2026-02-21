@@ -37,7 +37,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    setIsLoading(true);
     try {
       const response = await AuthService.login({ email, password });
 
@@ -56,8 +55,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         success: false,
         error: 'Network error. Please try again.'
       };
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -67,7 +64,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     firstName: string;
     lastName: string;
   }) => {
-    setIsLoading(true);
     try {
       const response = await AuthService.register({
         email: userData.email,
@@ -90,8 +86,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         success: false,
         error: 'Network error. Please try again.'
       };
-    } finally {
-      setIsLoading(false);
     }
   };
 
