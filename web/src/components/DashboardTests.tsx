@@ -191,18 +191,25 @@ export default function DashboardTests() {
               <h1 className="mt-1 text-3xl font-semibold text-white">{t('dashboard.library.subtitle')}</h1>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => router.push('/dashboard')}
-                className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-indigo-200 transition hover:border-indigo-300 hover:text-white"
-              >
-                {t('common.actions.backToDashboard')}
-              </button>
-              <button
-                type="button"
-                onClick={openCreateTest}
-                className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:bg-indigo-600"
-              >
+            <button
+              type="button"
+              onClick={() => router.push('/dashboard')}
+              className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-indigo-200 transition hover:border-indigo-300 hover:text-white"
+            >
+              {t('common.actions.backToDashboard')}
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push('/dashboard/ai')}
+              className="rounded-xl border border-cyan-300/40 bg-cyan-500/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-100 transition hover:border-cyan-300 hover:bg-cyan-500/35"
+            >
+              {t('common.actions.openAIStudio')}
+            </button>
+            <button
+              type="button"
+              onClick={openCreateTest}
+              className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:bg-indigo-600"
+            >
                 {t('common.actions.createTest')}
               </button>
               <button

@@ -165,7 +165,7 @@ export default function Dashboard() {
           </div>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-2">
+        <section className="grid gap-6 lg:grid-cols-3">
           <article className="relative overflow-hidden rounded-3xl border border-indigo-500/40 bg-indigo-500/15 p-8 shadow-2xl shadow-indigo-500/20">
             <div className="absolute -right-24 -top-24 h-56 w-56 rounded-full bg-indigo-500/30 blur-3xl" />
             <div className="relative flex h-full flex-col justify-between">
@@ -209,6 +209,24 @@ export default function Dashboard() {
                 className="mt-6 w-fit rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-emerald-600 shadow-lg shadow-white/30 transition hover:-translate-y-0.5 hover:shadow-white/40"
               >
                 {t('dashboard.quickAccess.attempts.action')}
+              </button>
+            </div>
+          </article>
+
+          <article className="relative overflow-hidden rounded-3xl border border-cyan-500/40 bg-cyan-500/15 p-8 shadow-2xl shadow-cyan-500/20">
+            <div className="absolute -right-24 -bottom-24 h-56 w-56 rounded-full bg-cyan-500/20 blur-3xl" />
+            <div className="relative flex h-full flex-col justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-cyan-200">{t('dashboard.quickAccess.ai.tag')}</p>
+                <h3 className="mt-3 text-2xl font-semibold text-white">{t('dashboard.quickAccess.ai.title')}</h3>
+                <p className="mt-2 text-sm text-cyan-100">{t('dashboard.quickAccess.ai.body')}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => router.push('/dashboard/ai')}
+                className="mt-6 w-fit rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-cyan-700 shadow-lg shadow-white/30 transition hover:-translate-y-0.5 hover:shadow-white/40"
+              >
+                {t('dashboard.quickAccess.ai.action')}
               </button>
             </div>
           </article>

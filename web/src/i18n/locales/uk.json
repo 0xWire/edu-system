@@ -23,7 +23,8 @@
       "finish": "Завершити спробу",
       "cancel": "Скасувати",
       "startOver": "Почати спочатку",
-      "remove": "Видалити"
+      "remove": "Видалити",
+      "openAIStudio": "AI студія"
     },
     "helpers": {
       "exampleName": "наприклад: Іван Петренко"
@@ -87,6 +88,12 @@
         "title": "Відстежуйте прогрес студентів",
         "body": "Переглядайте відправлені спроби, результати та керуйте доступом для кожного призначення.",
         "action": "Перейти до спроб"
+      },
+      "ai": {
+        "tag": "ai помічник",
+        "title": "Генерація матеріалів через AI",
+        "body": "Запускайте 4-шаровий конвеєр для тестів, конспектів і валідації за методичкою.",
+        "action": "Відкрити AI студію"
       }
     },
     "connection": {
@@ -237,6 +244,137 @@
       "tag": "Новий тест",
       "title": "Створення тесту",
       "close": "Закрити"
+    }
+  },
+  "aiStudio": {
+    "tag": "ai студія",
+    "title": "AI помічник викладача",
+    "subtitle": "Створюйте тести та матеріали підготовки з методички через контрольований 4-шаровий конвеєр.",
+    "actions": {
+      "refreshProviders": "Оновити провайдери",
+      "loadingProviders": "Завантаження провайдерів…",
+      "run": "Запустити конвеєр",
+      "running": "Запуск…",
+      "copyFinal": "Копіювати фінал",
+      "copyAll": "Копіювати весь результат",
+      "download": "Завантажити JSON"
+    },
+    "copy": {
+      "final": "Фінальний пакет скопійовано",
+      "full": "Повний результат конвеєра скопійовано"
+    },
+    "errors": {
+      "providersLoad": "Не вдалося завантажити статуси провайдерів.",
+      "materialRequired": "Додайте текст методички або URL джерела перед запуском.",
+      "providerOrderRequired": "Оберіть щонайменше один провайдер у глобальному порядку.",
+      "runFailed": "Не вдалося запустити AI-конвеєр."
+    },
+    "material": {
+      "title": "Джерело матеріалу",
+      "subtitle": "Вставте текст методички або вкажіть URL джерела.",
+      "fields": {
+        "title": "Назва матеріалу",
+        "sourceUrl": "URL джерела",
+        "text": "Текст методички",
+        "language": "Мова джерела",
+        "note": "Додаткова примітка"
+      },
+      "placeholders": {
+        "title": "Приклад: Модуль з диференціальних рівнянь",
+        "sourceUrl": "https://example.com/syllabus",
+        "text": "Вставте повний текст методички, конспекту чи іншого джерела…",
+        "language": "ru / uk / en",
+        "note": "Зробити акцент на практичних задачах до іспиту"
+      }
+    },
+    "generation": {
+      "title": "Налаштування генерації",
+      "subtitle": "Задайте обсяг і цільову аудиторію для згенерованих матеріалів.",
+      "fields": {
+        "variantsCount": "Кількість варіантів",
+        "questionsPerVariant": "Питань у варіанті",
+        "difficulty": "Складність",
+        "audience": "Аудиторія",
+        "outputLanguage": "Мова результату",
+        "includeExplanations": "Додавати пояснення до відповідей",
+        "includePracticeTest": "Додавати тренувальний тест"
+      },
+      "placeholders": {
+        "difficulty": "mixed / beginner / advanced",
+        "audience": "студенти 1 курсу",
+        "outputLanguage": "ru / uk / en"
+      }
+    },
+    "providers": {
+      "title": "Маршрутизація провайдерів",
+      "subtitle": "Налаштуйте fallback-порядок для OpenAI, Gemini, DeepSeek, OpenRouter та локального AI.",
+      "available": "Доступні провайдери",
+      "configured": "Налаштовано",
+      "notConfigured": "Не налаштовано",
+      "globalOrder": "Глобальний порядок",
+      "emptyOrder": "Провайдери ще не вибрані.",
+      "useConfiguredOnly": "Лише налаштовані",
+      "layerOrder": "Порядок для шару:",
+      "customForLayer": "Окремо для цього шару",
+      "layerFallbackHint": "Коли окремий порядок вимкнено, використовується глобальний."
+    },
+    "tabs": {
+      "final": "Фінал",
+      "validation": "Валідація",
+      "plan": "План",
+      "draft": "Чернетка",
+      "trace": "Траса",
+      "raw": "Raw JSON"
+    },
+    "result": {
+      "title": "Результат конвеєра",
+      "idleTag": "готово",
+      "idleTitle": "Запустіть конвеєр, щоб побачити результат",
+      "idleDescription": "Після запуску зʼявляться план, чернетки матеріалів, звіт валідації та фінальний пакет для викладача."
+    },
+    "final": {
+      "teacherSummary": "Підсумок для викладача",
+      "ready": "Готово до використання",
+      "notReady": "Потрібна перевірка",
+      "appliedFixes": "Внесені виправлення",
+      "unresolvedWarnings": "Невирішені попередження",
+      "variants": "Фінальні варіанти тесту",
+      "variant": "Варіант",
+      "studyNotes": "Конспект підготовки",
+      "none": "Немає"
+    },
+    "validation": {
+      "alignment": "Статус відповідності",
+      "aligned": "Відповідає",
+      "notAligned": "Не відповідає",
+      "score": "Оцінка відповідності: {score}/100",
+      "issues": "Знайдені проблеми",
+      "noIssues": "Проблем валідації не виявлено.",
+      "missingTopics": "Пропущені теми",
+      "extraTopics": "Зайві теми",
+      "unknownLocation": "Невідоме місце"
+    },
+    "plan": {
+      "summary": "Резюме плану",
+      "objectives": "Навчальні цілі",
+      "blueprint": "Blueprint",
+      "blueprintVariants": "Варіантів: {count}",
+      "blueprintQuestions": "Питань у варіанті: {count}",
+      "topicBlocks": "Тематичні блоки"
+    },
+    "draft": {
+      "variants": "Чернетки варіантів",
+      "studyNotes": "Чернетка конспекту",
+      "practiceTest": "Тренувальний тест",
+      "practiceUntitled": "Тест без назви",
+      "practiceQuestions": "Питань: {count}"
+    },
+    "trace": {
+      "fallbackUsed": "Fallback",
+      "primaryUsed": "Primary",
+      "attempts": "Спроб: {count}",
+      "errors": "Помилки провайдера",
+      "unknownModel": "Невідома модель"
     }
   },
   "takeTest": {

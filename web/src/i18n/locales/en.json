@@ -23,7 +23,8 @@
       "finish": "Finish attempt",
       "cancel": "Cancel",
       "startOver": "Start over",
-      "remove": "Remove"
+      "remove": "Remove",
+      "openAIStudio": "AI studio"
     },
     "helpers": {
       "exampleName": "e.g. Jane Doe"
@@ -87,6 +88,12 @@
         "title": "Track learner progress",
         "body": "Monitor submissions, review scores and manage access for each assignment in one place.",
         "action": "View attempts"
+      },
+      "ai": {
+        "tag": "ai assistant",
+        "title": "Generate prep materials with AI",
+        "body": "Run the 4-layer pipeline to build test variants, notes and validation from your methodology.",
+        "action": "Open AI studio"
       }
     },
     "connection": {
@@ -237,6 +244,137 @@
       "tag": "New test",
       "title": "Create a test",
       "close": "Close"
+    }
+  },
+  "aiStudio": {
+    "tag": "ai studio",
+    "title": "Teacher AI assistant",
+    "subtitle": "Build tests and prep materials from your methodology through a controlled 4-layer pipeline.",
+    "actions": {
+      "refreshProviders": "Refresh providers",
+      "loadingProviders": "Loading providers…",
+      "run": "Run pipeline",
+      "running": "Running…",
+      "copyFinal": "Copy final",
+      "copyAll": "Copy full result",
+      "download": "Download JSON"
+    },
+    "copy": {
+      "final": "Final package copied",
+      "full": "Full pipeline result copied"
+    },
+    "errors": {
+      "providersLoad": "Failed to load provider statuses.",
+      "materialRequired": "Add material text or source URL before running.",
+      "providerOrderRequired": "Choose at least one provider in global order.",
+      "runFailed": "Failed to run AI pipeline."
+    },
+    "material": {
+      "title": "Material source",
+      "subtitle": "Paste your methodology text or provide a source URL.",
+      "fields": {
+        "title": "Material title",
+        "sourceUrl": "Source URL",
+        "text": "Methodology text",
+        "language": "Source language",
+        "note": "Additional note"
+      },
+      "placeholders": {
+        "title": "Example: Differential equations module",
+        "sourceUrl": "https://example.com/syllabus",
+        "text": "Paste the full methodology, lecture notes or other source here…",
+        "language": "ru / uk / en",
+        "note": "Focus on practical tasks for final exam"
+      }
+    },
+    "generation": {
+      "title": "Generation settings",
+      "subtitle": "Define volume and target audience for generated materials.",
+      "fields": {
+        "variantsCount": "Test variants",
+        "questionsPerVariant": "Questions per variant",
+        "difficulty": "Difficulty",
+        "audience": "Audience",
+        "outputLanguage": "Output language",
+        "includeExplanations": "Include answer explanations",
+        "includePracticeTest": "Include practice test"
+      },
+      "placeholders": {
+        "difficulty": "mixed / beginner / advanced",
+        "audience": "1st year students",
+        "outputLanguage": "ru / uk / en"
+      }
+    },
+    "providers": {
+      "title": "Provider routing",
+      "subtitle": "Set fallback order for OpenAI, Gemini, DeepSeek, OpenRouter and local AI.",
+      "available": "Available providers",
+      "configured": "Configured",
+      "notConfigured": "Not configured",
+      "globalOrder": "Global order",
+      "emptyOrder": "No providers selected yet.",
+      "useConfiguredOnly": "Use configured only",
+      "layerOrder": "Layer order:",
+      "customForLayer": "Custom for this layer",
+      "layerFallbackHint": "Uses global order when custom routing is disabled."
+    },
+    "tabs": {
+      "final": "Final",
+      "validation": "Validation",
+      "plan": "Plan",
+      "draft": "Draft",
+      "trace": "Trace",
+      "raw": "Raw JSON"
+    },
+    "result": {
+      "title": "Pipeline output",
+      "idleTag": "ready",
+      "idleTitle": "Run the pipeline to see results",
+      "idleDescription": "After launch you will see plan, draft materials, validation report and final teacher-ready package."
+    },
+    "final": {
+      "teacherSummary": "Teacher summary",
+      "ready": "Ready for use",
+      "notReady": "Needs review",
+      "appliedFixes": "Applied fixes",
+      "unresolvedWarnings": "Unresolved warnings",
+      "variants": "Final test variants",
+      "variant": "Variant",
+      "studyNotes": "Study notes",
+      "none": "None"
+    },
+    "validation": {
+      "alignment": "Alignment status",
+      "aligned": "Aligned",
+      "notAligned": "Not aligned",
+      "score": "Alignment score: {score}/100",
+      "issues": "Detected issues",
+      "noIssues": "No validation issues found.",
+      "missingTopics": "Missing topics",
+      "extraTopics": "Extra topics",
+      "unknownLocation": "Unknown location"
+    },
+    "plan": {
+      "summary": "Plan summary",
+      "objectives": "Learning objectives",
+      "blueprint": "Blueprint",
+      "blueprintVariants": "Variants: {count}",
+      "blueprintQuestions": "Questions per variant: {count}",
+      "topicBlocks": "Topic blocks"
+    },
+    "draft": {
+      "variants": "Draft variants",
+      "studyNotes": "Draft study notes",
+      "practiceTest": "Practice test",
+      "practiceUntitled": "Untitled practice test",
+      "practiceQuestions": "Questions: {count}"
+    },
+    "trace": {
+      "fallbackUsed": "Fallback",
+      "primaryUsed": "Primary",
+      "attempts": "Attempts: {count}",
+      "errors": "Provider errors",
+      "unknownModel": "Unknown model"
     }
   },
   "createTest": {

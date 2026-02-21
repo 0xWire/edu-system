@@ -178,6 +178,13 @@ export default function DashboardAssignments() {
             </button>
             <button
               type="button"
+              onClick={() => router.push('/dashboard/ai')}
+              className="rounded-xl border border-cyan-300/40 bg-cyan-500/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-100 transition hover:border-cyan-300 hover:bg-cyan-500/35"
+            >
+              {t('common.actions.openAIStudio')}
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 void loadAssignments();
               }}
