@@ -3,8 +3,9 @@ import path from 'path';
 import type { NextConfig } from "next";
 
 const DEFAULT_API_PORT = '8081';
+const DEFAULT_INTERNAL_API_URL = 'http://backend:8080';
 
-const getApiUrl = (): string => {
+const getPublicApiUrl = (): string => {
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL;
   }
@@ -33,17 +34,18 @@ const getApiUrl = (): string => {
   return `http://localhost:${DEFAULT_API_PORT}`;
 };
 
-const API_URL = getApiUrl();
+const PUBLIC_API_URL = getPublicApiUrl();
+const INTERNAL_API_URL = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || DEFAULT_INTERNAL_API_URL;
 
 const nextConfig: NextConfig = {
   env: {
-    NEXT_PUBLIC_API_URL: API_URL,
+    NEXT_PUBLIC_API_URL: PUBLIC_API_URL,
   },
   async rewrites() {
     return [
       {
         source: '/api/:path*',
-        destination: `${API_URL}/api/:path*`
+        destination: `${INTERNAL_API_URL}/api/:path*`
       }
     ];
   },

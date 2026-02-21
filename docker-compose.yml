@@ -19,9 +19,11 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL is required}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://edus.r4nol.dev}
+        INTERNAL_API_URL: ${INTERNAL_API_URL:-http://backend:8080}
     environment:
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL is required}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://edus.r4nol.dev}
+      - INTERNAL_API_URL=${INTERNAL_API_URL:-http://backend:8080}
       - PORT=3000
       - HOST=0.0.0.0
       - EDUS_HOST=${EDUS_HOST:-edus.r4nol.dev}

@@ -6,8 +6,10 @@ RUN npm ci
 
 COPY web ./
 
-ARG NEXT_PUBLIC_API_URL=http://backend:8080
+ARG NEXT_PUBLIC_API_URL=http://localhost:3000
+ARG INTERNAL_API_URL=http://backend:8080
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV INTERNAL_API_URL=${INTERNAL_API_URL}
 
 RUN npm run build
 
@@ -21,7 +23,10 @@ COPY --from=deps /app/package.json /app/package-lock.json ./
 
 RUN npm ci --omit=dev
 
+ARG NEXT_PUBLIC_API_URL=http://localhost:3000
+ARG INTERNAL_API_URL=http://backend:8080
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV INTERNAL_API_URL=${INTERNAL_API_URL}
 ENV PORT=3000
 ENV HOST=0.0.0.0
 
