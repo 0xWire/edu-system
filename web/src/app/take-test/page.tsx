@@ -13,6 +13,7 @@ function TakeTestPageInner() {
   const { t, language } = useI18n();
 
   const assignmentId = searchParams.get('assignmentId');
+  const autoMode = searchParams.get('autoplay') === '1' || searchParams.get('auto') === '1';
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -159,6 +160,30 @@ function TakeTestPageInner() {
         return field.required ? val.length > 0 : true;
       }));
 
+  useEffect(() => {
+    if (!autoMode || hasStarted || !assignment) {
+      return;
+    }
+
+    setFirstName((prev) => (prev.trim() ? prev : 'Roman'));
+    setLastName((prev) => (prev.trim() ? prev : 'Voronov'));
+
+    if (assignment.fields && assignment.fields.length > 0) {
+      const customFields = assignment.fields ?? [];
+      setExtraFields((prev) => {
+        const next = { ...prev };
+        customFields
+          .filter((field) => field.key !== 'first_name' && field.key !== 'last_name')
+          .forEach((field) => {
+            if (!next[field.key]) {
+              next[field.key] = field.required ? 'Group A-101' : 'Optional field';
+            }
+          });
+        return next;
+      });
+    }
+  }, [assignment, autoMode, hasStarted]);
+
   const handleStart = useCallback(() => {
     if (!canStart) {
       return;
@@ -190,6 +215,18 @@ function TakeTestPageInner() {
     setGuestName(fullName.trim());
     setHasStarted(true);
   }, [canStart, fullName, assignment, extraFields, firstName, lastName]);
+
+  useEffect(() => {
+    if (!autoMode || hasStarted || !canStart) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      handleStart();
+    }, 700);
+
+    return () => window.clearTimeout(timer);
+  }, [autoMode, canStart, handleStart, hasStarted]);
 
   if (!assignmentId) {
     return (
@@ -327,6 +364,7 @@ function TakeTestPageInner() {
       assignmentId={assignmentId}
       guestName={guestName || undefined}
       participantFields={participantFields}
+      autoPlay={autoMode}
     />
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useI18n } from '@/contexts/LanguageContext';
 import { AIService } from '@/services/ai';
@@ -21,6 +21,38 @@ const ALL_LAYERS: AILayerName[] = ['plan', 'generate', 'validate', 'refine'];
 type ResultTab = 'final' | 'validation' | 'plan' | 'draft' | 'trace' | 'raw';
 
 type LayerOverrideState = Record<AILayerName, { enabled: boolean; order: AIProviderName[] }>;
+
+type AIStudioService = {
+  getProviders: () => Promise<AIProviderStatus[]>;
+  runPipeline: (payload: AIPipelineRunRequest) => Promise<AIPipelineRunResponse>;
+};
+
+type AIStudioAutomation = {
+  enabled?: boolean;
+  delayMs?: number;
+  material?: {
+    title?: string;
+    text?: string;
+    sourceUrl?: string;
+    language?: string;
+    note?: string;
+  };
+  generation?: {
+    variantsCount?: string;
+    questionsPerVariant?: string;
+    difficulty?: string;
+    audience?: string;
+    outputLanguage?: string;
+    includeExplanations?: boolean;
+    includePracticeTest?: boolean;
+  };
+};
+
+interface DashboardAIStudioProps {
+  service?: AIStudioService;
+  automation?: AIStudioAutomation;
+  hideBackButton?: boolean;
+}
 
 const createDefaultLayerOverrides = (): LayerOverrideState => ({
   plan: { enabled: false, order: [...ALL_PROVIDERS] },
@@ -82,9 +114,16 @@ const issueSeverityClass = (severity: string): string => {
   }
 };
 
-export default function DashboardAIStudio() {
+export default function DashboardAIStudio({
+  service,
+  automation,
+  hideBackButton = false
+}: DashboardAIStudioProps = {}) {
+  const aiService = service ?? AIService;
   const router = useRouter();
   const { t } = useI18n();
+  const autoFilledRef = useRef(false);
+  const autoRunRef = useRef(false);
 
   const [providers, setProviders] = useState<AIProviderStatus[]>([]);
   const [providersLoading, setProvidersLoading] = useState(true);
@@ -131,7 +170,7 @@ export default function DashboardAIStudio() {
   const loadProviders = useCallback(async () => {
     try {
       setProvidersLoading(true);
-      const data = await AIService.getProviders();
+      const data = await aiService.getProviders();
       setProviders(data);
       setProvidersError(null);
     } catch (error) {
@@ -141,7 +180,7 @@ export default function DashboardAIStudio() {
     } finally {
       setProvidersLoading(false);
     }
-  }, [t]);
+  }, [aiService, t]);
 
   useEffect(() => {
     void loadProviders();
@@ -259,7 +298,7 @@ export default function DashboardAIStudio() {
     try {
       setRunLoading(true);
       setRunError(null);
-      const response = await AIService.runPipeline(payload);
+      const response = await aiService.runPipeline(payload);
       setResult(response);
       setActiveTab('final');
     } catch (error) {
@@ -287,9 +326,57 @@ export default function DashboardAIStudio() {
     outputLanguage,
     providerOrder,
     questionsPerVariant,
+    aiService,
     t,
     variantsCount
   ]);
+
+  useEffect(() => {
+    if (!automation?.enabled || autoFilledRef.current) {
+      return;
+    }
+
+    const autoMaterial = automation.material ?? {};
+    const autoGeneration = automation.generation ?? {};
+
+    if (autoMaterial.title !== undefined) setMaterialTitle(autoMaterial.title);
+    if (autoMaterial.text !== undefined) setMaterialText(autoMaterial.text);
+    if (autoMaterial.sourceUrl !== undefined) setMaterialSourceURL(autoMaterial.sourceUrl);
+    if (autoMaterial.language !== undefined) setMaterialLanguage(autoMaterial.language);
+    if (autoMaterial.note !== undefined) setMaterialNote(autoMaterial.note);
+
+    if (autoGeneration.variantsCount !== undefined) setVariantsCount(autoGeneration.variantsCount);
+    if (autoGeneration.questionsPerVariant !== undefined) setQuestionsPerVariant(autoGeneration.questionsPerVariant);
+    if (autoGeneration.difficulty !== undefined) setDifficulty(autoGeneration.difficulty);
+    if (autoGeneration.audience !== undefined) setAudience(autoGeneration.audience);
+    if (autoGeneration.outputLanguage !== undefined) setOutputLanguage(autoGeneration.outputLanguage);
+    if (autoGeneration.includeExplanations !== undefined) setIncludeExplanations(autoGeneration.includeExplanations);
+    if (autoGeneration.includePracticeTest !== undefined) setIncludePracticeTest(autoGeneration.includePracticeTest);
+
+    autoFilledRef.current = true;
+  }, [automation]);
+
+  useEffect(() => {
+    if (!automation?.enabled || autoRunRef.current) {
+      return;
+    }
+    if (providersLoading || runLoading) {
+      return;
+    }
+    if (!autoFilledRef.current) {
+      return;
+    }
+    if (!materialText.trim() && !materialSourceURL.trim()) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      autoRunRef.current = true;
+      void runPipeline();
+    }, automation.delayMs ?? 900);
+
+    return () => window.clearTimeout(timer);
+  }, [automation, materialSourceURL, materialText, providersLoading, runLoading, runPipeline]);
 
   const copyToClipboard = useCallback(async (mode: 'final' | 'all') => {
     if (!result || typeof navigator === 'undefined' || !navigator.clipboard) {
@@ -487,13 +574,15 @@ export default function DashboardAIStudio() {
             <p className="mt-2 max-w-2xl text-sm text-slate-300">{t('aiStudio.subtitle')}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => router.push('/dashboard')}
-              className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-indigo-200 transition hover:border-indigo-300 hover:text-white"
-            >
-              {t('common.actions.backToDashboard')}
-            </button>
+            {!hideBackButton && (
+              <button
+                type="button"
+                onClick={() => router.push('/dashboard')}
+                className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-indigo-200 transition hover:border-indigo-300 hover:text-white"
+              >
+                {t('common.actions.backToDashboard')}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {

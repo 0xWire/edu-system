@@ -13,9 +13,32 @@ interface TestAttemptPageProps {
   assignmentId: string;
   guestName?: string;
   participantFields?: Record<string, string>;
+  autoPlay?: boolean;
+  autoPlayDelayMs?: number;
+  service?: TestAttemptServiceLike;
+  reviewHref?: string;
+  reviewLabel?: string;
 }
 
-export default function TestAttemptPage({ assignmentId, guestName, participantFields }: TestAttemptPageProps) {
+interface TestAttemptServiceLike {
+  startAttempt: (data: StartAttemptRequest) => Promise<AttemptView>;
+  getNextQuestion: (attemptId: string) => Promise<{ attempt: AttemptView | null; question: QuestionView | null; done?: boolean }>;
+  submitAnswer: (attemptId: string, data: { version: number; payload: AnswerPayload }) => Promise<{ attempt: AttemptView }>;
+  submitAttempt: (attemptId: string, data: { version: number }) => Promise<AttemptView>;
+  cancelAttempt: (attemptId: string, data: { version: number }) => Promise<AttemptView>;
+}
+
+export default function TestAttemptPage({
+  assignmentId,
+  guestName,
+  participantFields,
+  autoPlay = false,
+  autoPlayDelayMs = 1100,
+  service,
+  reviewHref,
+  reviewLabel
+}: TestAttemptPageProps) {
+  const runtimeService = service ?? TestAttemptService;
   const router = useRouter();
   const { t } = useI18n();
 
@@ -30,6 +53,7 @@ export default function TestAttemptPage({ assignmentId, guestName, participantFi
   const [copyNotice, setCopyNotice] = useState(false);
   const questionDeadlineRef = useRef<number | null>(null);
   const questionTimeoutTriggeredRef = useRef(false);
+  const autoAnsweredKeyRef = useRef<string | null>(null);
 
   const attemptSubtitle = useMemo(() => {
     if (!attempt) return '';
@@ -126,7 +150,7 @@ export default function TestAttemptPage({ assignmentId, guestName, participantFi
     setErrorKey('attempt.questionTimeout');
     setLoading(true);
     try {
-      const response = await TestAttemptService.getNextQuestion(attempt.attempt_id);
+      const response = await runtimeService.getNextQuestion(attempt.attempt_id);
       if (response?.attempt) {
         setAttempt(response.attempt);
         if (response.question) {
@@ -156,7 +180,7 @@ export default function TestAttemptPage({ assignmentId, guestName, participantFi
     } finally {
       setLoading(false);
     }
-  }, [attempt, resetQuestionTimer, startQuestionTimer]);
+  }, [attempt, resetQuestionTimer, runtimeService, startQuestionTimer]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -208,7 +232,7 @@ export default function TestAttemptPage({ assignmentId, guestName, participantFi
 
     try {
       setLoading(true);
-      const finalAttempt = await TestAttemptService.submitAttempt(attemptToSubmit.attempt_id, {
+      const finalAttempt = await runtimeService.submitAttempt(attemptToSubmit.attempt_id, {
         version: attemptToSubmit.version
       });
       setAttempt(finalAttempt);
@@ -221,14 +245,14 @@ export default function TestAttemptPage({ assignmentId, guestName, participantFi
     } finally {
       setLoading(false);
     }
-  }, [attempt, resetQuestionTimer]);
+  }, [attempt, resetQuestionTimer, runtimeService]);
 
-  const handleSubmitAnswer = async (answerPayload: AnswerPayload) => {
+  const handleSubmitAnswer = useCallback(async (answerPayload: AnswerPayload) => {
     if (!attempt || loading) return;
 
     try {
       setLoading(true);
-      const { attempt: updatedAttempt } = await TestAttemptService.submitAnswer(attempt.attempt_id, {
+      const { attempt: updatedAttempt } = await runtimeService.submitAnswer(attempt.attempt_id, {
         version: attempt.version,
         payload: answerPayload
       });
@@ -236,7 +260,7 @@ export default function TestAttemptPage({ assignmentId, guestName, participantFi
       setErrorKey(null);
 
       if (updatedAttempt.cursor < updatedAttempt.total) {
-        const response = await TestAttemptService.getNextQuestion(updatedAttempt.attempt_id);
+        const response = await runtimeService.getNextQuestion(updatedAttempt.attempt_id);
         if (response.attempt) {
           setAttempt(response.attempt);
         }
@@ -268,14 +292,14 @@ export default function TestAttemptPage({ assignmentId, guestName, participantFi
     } finally {
       setLoading(false);
     }
-  };
+  }, [attempt, handleSubmitTest, loading, resetQuestionTimer, runtimeService, startQuestionTimer]);
 
   const handleCancelTest = async () => {
     if (!attempt) return;
 
     try {
       setLoading(true);
-      await TestAttemptService.cancelAttempt(attempt.attempt_id, {
+      await runtimeService.cancelAttempt(attempt.attempt_id, {
         version: attempt.version
       });
       resetQuestionTimer();
@@ -369,12 +393,12 @@ export default function TestAttemptPage({ assignmentId, guestName, participantFi
           startData.guest_name = guestName;
         }
 
-        const attemptData = await TestAttemptService.startAttempt(startData);
+        const attemptData = await runtimeService.startAttempt(startData);
         if (!isMounted) return;
         setAttempt(attemptData);
         setErrorKey(null);
 
-        const response = await TestAttemptService.getNextQuestion(attemptData.attempt_id);
+        const response = await runtimeService.getNextQuestion(attemptData.attempt_id);
         if (!isMounted) return;
 
         if (response.attempt) {
@@ -423,8 +447,75 @@ export default function TestAttemptPage({ assignmentId, guestName, participantFi
     guestName,
     participantFields,
     resetQuestionTimer,
+    runtimeService,
     startQuestionTimer
   ]);
+
+  useEffect(() => {
+    if (!autoPlay || !attempt || attempt.status !== 'active' || !currentQuestion || loading) {
+      return;
+    }
+
+    const runKey = `${attempt.attempt_id}:${attempt.version}:${currentQuestion.id}`;
+    if (autoAnsweredKeyRef.current === runKey) {
+      return;
+    }
+    autoAnsweredKeyRef.current = runKey;
+
+    const payload: AnswerPayload = (() => {
+      const kind = currentQuestion.type || 'single';
+      switch (kind) {
+        case 'multi':
+          return { kind: 'multi', selected_options: [0] };
+        case 'text':
+          if (currentQuestion.question_text.toLowerCase().includes('basis')) {
+            return {
+              kind: 'text',
+              text: 'A change-of-basis matrix maps coordinate vectors from one basis to another, so multiplying by this matrix converts coordinates consistently.'
+            };
+          }
+          if (currentQuestion.question_text.toLowerCase().includes('chain rule')) {
+            return {
+              kind: 'text',
+              text: 'Chain rule states d/dx f(g(x)) = f\'(g(x)) * g\'(x). For example derivative of sin(x^2) is cos(x^2) * 2x.'
+            };
+          }
+          if (currentQuestion.question_text.toLowerCase().includes('integral')) {
+            return {
+              kind: 'text',
+              text: 'A definite integral represents signed area under a curve on an interval, and accumulates infinitesimal changes from a to b.'
+            };
+          }
+          if (currentQuestion.question_text.toLowerCase().includes('application')) {
+            return {
+              kind: 'text',
+              text: 'In data science, eigenvectors and eigenvalues are used in PCA to identify principal directions of variance.'
+            };
+          }
+          return {
+            kind: 'text',
+            text: 'Symmetric matrices are orthogonally diagonalizable by the spectral theorem.'
+          };
+        case 'code':
+          return {
+            kind: 'code',
+            code: {
+              lang: 'plain',
+              body: 'Symmetric matrix implies orthonormal eigenbasis by spectral theorem.'
+            }
+          };
+        case 'single':
+        default:
+          return { kind: 'single', selected: 0 };
+      }
+    })();
+
+    const timer = window.setTimeout(() => {
+      void handleSubmitAnswer(payload);
+    }, autoPlayDelayMs);
+
+    return () => window.clearTimeout(timer);
+  }, [autoPlay, autoPlayDelayMs, attempt, currentQuestion, handleSubmitAnswer, loading]);
 
   if (loading && !attempt && !errorKey) {
     return (
@@ -501,6 +592,17 @@ export default function TestAttemptPage({ assignmentId, guestName, participantFi
               <p className="mt-4 text-xs uppercase tracking-[0.3em] text-slate-300">
                 {t('attempt.solutionsHidden')}
               </p>
+            )}
+
+            {reviewHref && (
+              <div className="mt-6 flex justify-start">
+                <a
+                  href={reviewHref}
+                  className="rounded-2xl bg-cyan-500 px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/30 transition hover:bg-cyan-400"
+                >
+                  {reviewLabel ?? 'Open teacher results'}
+                </a>
+              </div>
             )}
 
           </div>
