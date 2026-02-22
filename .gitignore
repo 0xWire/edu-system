@@ -3,3 +3,4 @@ database.db
 .idea
 /.gocache/
 .cache/
+*.db
